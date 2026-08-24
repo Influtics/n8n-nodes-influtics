@@ -2,19 +2,15 @@
 
 All notable changes to `n8n-nodes-influtics` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/), versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [1.0.0] - 2026-08-24
 
-### Added
-- Initial community-node release covering all public Influtics API endpoints.
+First public community-node release. Covers the full Influtics public REST API surface:
 
-## [0.1.0] - TBD
-
-### Added
-- InfluticsApi credential (single API key).
-- InfluticsVideo node: Track, Get Stats, Get By ID, Get By External ID, Update By External ID.
-- InfluticsBlogger node: Track, Get Job, By Username.
-- InfluticsTrend node: Search.
-- InfluticsAccount node: Get Usage, Get Limits.
-- Shared GenericFunctions transport + error mapper.
-- Vitest test suite with nock fixtures covering success, error, and 402 paywall cases.
-- GitHub Actions CI (lint + test).
+- InfluticsApi credential (single Bearer API key).
+- InfluticsVideo node (5 operations).
+- InfluticsBlogger node (3 operations, async Track returns job_id).
+- InfluticsTrend node (1 operation).
+- InfluticsAccount node (2 operations).
+- GenericFunctions transport + error mapper.
+- Vitest + nock test suite.
+- GitHub Actions CI (lint + test on every push/PR).

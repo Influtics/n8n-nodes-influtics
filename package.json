@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-influtics",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Official Influtics integration for n8n — track influencer videos, bloggers, and trends",
   "author": {
     "name": "Influtics",
