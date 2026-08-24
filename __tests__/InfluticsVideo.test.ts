@@ -695,6 +695,55 @@ describe('InfluticsVideo node — Update By External ID operation', () => {
     expect(out[0][0].json.data.updated_fields).toEqual(['notes']);
   });
 
+  it('omits the default empty status from the body so users who only touch Notes do not clobber workflow state', async () => {
+    // Regression test: previously updateFields.status defaulted to 'to do',
+    // causing every Update run to overwrite status with 'to do'. Now defaults
+    // to '' and the handler's filter drops it. Simulates the UI's new default.
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'updateByExternalId',
+        externalId: 'ext-1',
+        platform: 'tiktok',
+        // status: '' is the new UI default; campaign: '' / tags: [] are also defaults.
+        updateFields: { notes: 'just notes', campaign: '', status: '', tags: [] },
+      };
+      return map[name];
+    });
+
+    nock(BASE_URL)
+      .patch('/v1/videos/by-external-id/ext-1', { notes: 'just notes' })
+      .reply(200, { success: true, data: { video_id: 'ext-1' } });
+
+    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+    expect(out[0][0].json.success).toBe(true);
+    // The nock exact-body matcher would have failed if status or campaign had leaked.
+  });
+
+  it('forwards an explicit status value (not the empty default) when the user picks one from the dropdown', async () => {
+    // If the user explicitly picks a status from the dropdown (non-empty), it
+    // MUST reach the body. The filter only drops empty strings — explicit picks
+    // are intentional.
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'updateByExternalId',
+        externalId: 'ext-1',
+        platform: 'tiktok',
+        updateFields: { notes: 'just notes', campaign: '', status: 'running', tags: [] },
+      };
+      return map[name];
+    });
+
+    nock(BASE_URL)
+      .patch('/v1/videos/by-external-id/ext-1', { notes: 'just notes', status: 'running' })
+      .reply(200, {
+        success: true,
+        data: { video_id: 'internal-uuid', external_video_id: 'ext-1', updated_fields: ['notes', 'status'] },
+      });
+
+    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+    expect(out[0][0].json.data.updated_fields).toEqual(['notes', 'status']);
+  });
+
   it('rejects empty updateFields with a NodeOperationError WITHOUT hitting the API', async () => {
     // Backend (handlePatchVideoByExternalId) requires at least one of the
     // editable fields — sending an empty body would 400. Fail fast with a

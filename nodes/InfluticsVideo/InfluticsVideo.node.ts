@@ -6,8 +6,7 @@
  *   eslint-plugin-n8n-nodes-base `node-dirname-against-convention` rule.
  * - `executeInfluticsVideo` is also exported as a named function so unit tests
  *   can drive the executor without instantiating the INodeType class.
- * - Task 5 ships Track + Get Stats. Get By ID / Get By External ID / Update By
- *   External ID remain stubbed ("not yet implemented") and land in Tasks 6/7.
+ * - Tasks 4/5/6 ship Track + Get Stats + Get/Update by ID/External ID.
  * - The unimplemented-operation branch keeps the executor safe if a future
  *   version's parameters somehow leak an unknown value.
  */
@@ -444,11 +443,15 @@ export class InfluticsVideo implements INodeType {
             name: 'status',
             type: 'options',
             options: [
+              // Sentinel: empty value means "no change" so untouched status
+              // doesn't clobber existing workflow state. The handler drops
+              // empty strings from the body.
+              { name: 'No Change', value: '' },
               { name: 'To Do', value: 'to do' },
               { name: 'Running', value: 'running' },
               { name: 'Ended', value: 'ended' },
             ],
-            default: 'to do',
+            default: '',
           },
           {
             displayName: 'Tags',
