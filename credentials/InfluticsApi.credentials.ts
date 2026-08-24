@@ -3,7 +3,6 @@ import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 export class InfluticsApi implements ICredentialType {
   name = 'influticsApi';
   displayName = 'Influtics API';
-  // eslint-disable-next-line n8n-nodes-base/cred-class-field-documentation-url-miscased
   documentationUrl = 'https://docs.influtics.com/';
   properties: INodeProperties[] = [
     {
