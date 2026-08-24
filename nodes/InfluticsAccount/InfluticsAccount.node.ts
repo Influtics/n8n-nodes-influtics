@@ -9,14 +9,13 @@
  * - Two read-only operations: Get Usage + Get Limits. Both endpoints take no
  *   user input (no query params, no body) — there is nothing to guard against
  *   on the wire, so neither handler needs defensive validation.
- * - Both endpoints cost 0 credits and are exempt from the paid-plan gate
- *   (see api-worker CLAUDE.md "Paid-plan enforcement" → "Exempt from the
- *   gate"), so free-tier callers can reach them.
+ * - Both endpoints cost 0 credits and are exempt from the paid-plan gate,
+ *   so free-tier callers can reach them. Public docs:
+ *   https://docs.influtics.com/
  * - The unimplemented-operation branch keeps the executor safe if a future
  *   version's parameters somehow leak an unknown value.
  *
- * Backend contract (verified against api-worker `handleGetUsage` /
- * `handleGetLimits` in src/index.js):
+ * Backend contract (public docs: https://docs.influtics.com/):
  *   GET /v1/account/usage
  *     query: NONE. body: NONE.
  *     200 → {
@@ -25,7 +24,7 @@
  *         usage_history: [...rows from daily_api_usage over the last 30 days...],
  *         summary: {
  *           plan: "free"|"pro"|"business"|null,
- *           is_unlimited: false,
+ *           is_unlimited: boolean,
  *           videos: { limit: number|null, used: number|null },
  *           credits: { total: number, used: number }
  *         }
@@ -49,7 +48,7 @@
  *       },
  *       meta: { processing_time_ms, request_id }
  *     }
- *     Defaults applied server-side when `getRateLimit` returns null:
+ *     Server-side default rate limits (when no override is configured):
  *       { requests_per_minute: 60, requests_per_hour: 3600,
  *         requests_per_day: 86400, requests_per_month: 10000,
  *         burst_allowance: 120 }.
@@ -117,11 +116,14 @@ export class InfluticsAccount implements INodeType {
     group: ['transform'],
     version: 1,
     description: 'Read Influtics account usage and limits',
-    // Account has only an `operation` parameter (no `resource`) — surface the
-    // chosen operation in the canvas subtitle. The default autofix template
-    // ('operation + ": " + resource') would reference a missing field, so we
-    // write a one-piece subtitle that just reflects the operation.
-    subtitle: '={{ $parameter["operation"] }}',
+    // eslint-plugin-n8n-nodes-base `node-class-description-missing-subtitle`
+    // requires a subtitle when every property is `displayName: 'Operation'`
+    // (sibling nodes like InfluticsVideo skip the rule because they have
+    // additional non-Operation fields). Map the raw operation value to its
+    // displayName so the canvas renders the friendly name rather than the
+    // enum value.
+    subtitle:
+      '={{ $parameter["operation"] === "getUsage" ? "Get Usage" : "Get Limits" }}',
     defaults: { name: 'Influtics Account' },
     inputs: ['main'],
     outputs: ['main'],

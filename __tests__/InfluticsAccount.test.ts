@@ -46,7 +46,7 @@ function makeCtx(overrides: Record<string, any> = {}) {
   return ctx;
 }
 
-describe('InfluticsAccount node — happy path', () => {
+describe('InfluticsAccount node — happy path (Get Usage + Get Limits)', () => {
   beforeAll(() => {
     // Block real network so accidental unmocked calls fail loudly.
     nock.disableNetConnect();
@@ -62,9 +62,10 @@ describe('InfluticsAccount node — happy path', () => {
   });
 
   it('GETs /v1/account/usage with no qs and no body, returns the data envelope', async () => {
-    // Backend (handleGetUsage in api-worker/src/index.js) reads no query
-    // params and no body. The wire request MUST be a bare GET — the executor
-    // must NOT send `?` / body. Verify both: URL match + callArgs shape.
+    // Public docs: https://docs.influtics.com/ — both Account endpoints read
+    // no query params and no body. The wire request MUST be a bare GET — the
+    // executor must NOT send `?` / body. Verify both: URL match + callArgs
+    // shape.
     const ctx = makeCtx({ operation: 'getUsage' });
 
     nock(BASE_URL)
@@ -88,12 +89,22 @@ describe('InfluticsAccount node — happy path', () => {
 
     const out = await executeInfluticsAccount.call(ctx as any, [{ json: {} }]);
 
-    expect(out[0][0].json.data.summary.plan).toBe('pro');
-    expect(out[0][0].json.data.summary.videos.limit).toBe(1000);
-    expect(out[0][0].json.data.summary.videos.used).toBe(200);
-    expect(out[0][0].json.data.summary.credits.used).toBe(312);
-    expect(out[0][0].json.data.usage_history).toHaveLength(2);
+    // Use toEqual on the data sub-tree for sharper coverage than cherry-picked
+    // fields — any silent drift in summary shape breaks the contract.
+    expect(out[0][0].json.data).toEqual({
+      usage_history: [
+        { created_at: '2026-08-23', endpoint: '/v1/videos/stats', credits_used: 0 },
+        { created_at: '2026-08-22', endpoint: '/v1/videos/track', credits_used: 1 },
+      ],
+      summary: {
+        plan: 'pro',
+        is_unlimited: false,
+        videos: { limit: 1000, used: 200 },
+        credits: { total: 1000, used: 312 },
+      },
+    });
     expect(out[0][0].json.meta.request_id).toBe('req-usage-1');
+    expect(out[0][0].json.meta.processing_time_ms).toBe(42);
     // Guard against silent drift where the URL is right but the helper starts
     // sending qs/body the backend ignores.
     const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
@@ -102,10 +113,10 @@ describe('InfluticsAccount node — happy path', () => {
   });
 
   it('GETs /v1/account/limits with no qs and no body, returns the data envelope', async () => {
-    // Backend (handleGetLimits in api-worker/src/index.js) reads no query
-    // params and no body. When getRateLimit returns null, the server fills in
-    // the documented defaults — mirror that here so the executor's surface
-    // contract stays the same regardless of which path the server took.
+    // Public docs: https://docs.influtics.com/ — Get Limits reads no query
+    // params and no body. The fixture mirrors the documented server-side
+    // defaults so the executor's surface contract stays the same regardless
+    // of which path the server took to fill them in.
     const ctx = makeCtx({ operation: 'getLimits' });
 
     nock(BASE_URL)
@@ -126,10 +137,17 @@ describe('InfluticsAccount node — happy path', () => {
 
     const out = await executeInfluticsAccount.call(ctx as any, [{ json: {} }]);
 
-    expect(out[0][0].json.data.rate_limits.requests_per_minute).toBe(60);
-    expect(out[0][0].json.data.rate_limits.requests_per_hour).toBe(3600);
-    expect(out[0][0].json.data.rate_limits.burst_allowance).toBe(120);
+    expect(out[0][0].json.data).toEqual({
+      rate_limits: {
+        requests_per_minute: 60,
+        requests_per_hour: 3600,
+        requests_per_day: 86400,
+        requests_per_month: 10000,
+        burst_allowance: 120,
+      },
+    });
     expect(out[0][0].json.meta.request_id).toBe('req-limits-1');
+    expect(out[0][0].json.meta.processing_time_ms).toBe(5);
     const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toBeUndefined();
     expect(callArgs.body).toBeUndefined();
@@ -186,9 +204,9 @@ describe('InfluticsAccount node — backend error codes surface', () => {
   });
 
   it('surfaces a 429 RATE_LIMITED on /v1/account/usage', async () => {
-    // The LimitsClient.getCreditsUsage path can throw RateLimitError when the
-    // org is at its monthly cap; api-worker surfaces that as a 429. The
-    // executor must propagate the code to the n8n UI via mapInfluticsError.
+    // The backend surfaces a 429 RATE_LIMITED when the org is at its monthly
+    // credit cap. The executor must propagate the code to the n8n UI via
+    // mapInfluticsError.
     const ctx = makeCtx({ operation: 'getUsage' });
 
     nock(BASE_URL)
