@@ -23,13 +23,8 @@ After install, configure the **Influtics API** credential with your API key from
 
 ## Documentation
 
-- Public API reference: https://influtics.com/api-reference
-- Design spec: [`plans/2026-08-23-n8n-nodes-influtics-design.md`](../blob/main/plans/2026-08-23-n8n-nodes-influtics-design.md) *(published in this repo after first tag)*
+- Public API reference: https://docs.influtics.com/
 - Issues: https://github.com/Influtics/n8n-nodes-influtics/issues
-
-## Status
-
-`v0.0.0` — bootstrap. Implementation in progress; see the [design spec](plans/2026-08-23-n8n-nodes-influtics-design.md) for the full plan.
 
 ## License
 
