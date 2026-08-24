@@ -154,3 +154,163 @@ describe('InfluticsVideo node — Track operation', () => {
     expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 });
+
+describe('InfluticsVideo node — Get Stats operation', () => {
+  let ctx: ReturnType<typeof mockDeep<IExecuteFunctions>>;
+
+  beforeEach(() => {
+    ctx = mockDeep<IExecuteFunctions>();
+    ctx.getNode = vi
+      .fn()
+      .mockReturnValue({ name: 'InfluticsVideo', type: 'n8n-nodes-influtics.influticsVideo', typeVersion: 1 } as any);
+    ctx.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'test-key' });
+    ctx.getInputData = vi.fn().mockReturnValue([{ json: {} }]);
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'getStats',
+        platform: ['tiktok'],
+        campaign: 'aug',
+        blogger: '@alice',
+        search: 'fyp',
+        publishedFrom: '2026-08-01',
+        publishedTo: '2026-08-23',
+        returnAll: false,
+        limit: 50,
+      };
+      return map[name];
+    });
+    ctx.helpers = {
+      // Mirror n8n's real `requestWithAuthentication` with `json: true`:
+      //   - 2xx → returns the parsed JSON body directly
+      //   - non-2xx → throws an Error whose `.response.body` holds the parsed error body
+      // Falls back from `uri` → `url` because GenericFunctions uses `url` but some
+      // n8n internals normalise to `uri`. Serializes `qs` onto the URL so nock's
+      // `.query(...)` matchers see the same path the production http helper would
+      // hit (request lib does the same — append qs to URL).
+      requestWithAuthentication: vi.fn(async (_name, opts) => {
+        let url = (opts as any).uri ?? (opts as any).url;
+        const qs = (opts as any).qs;
+        if (qs && typeof qs === 'object') {
+          const sp = new URLSearchParams();
+          for (const [k, v] of Object.entries(qs)) {
+            if (Array.isArray(v)) {
+              for (const item of v) {
+                if (item !== undefined && item !== null) sp.append(k, String(item));
+              }
+            } else if (v !== undefined && v !== null && v !== '') {
+              sp.append(k, String(v));
+            }
+          }
+          const qsStr = sp.toString();
+          if (qsStr) url += `?${qsStr}`;
+        }
+        const res = await fetch(url, {
+          method: (opts as any).method,
+          headers: (opts as any).headers,
+          body: (opts as any).body ? JSON.stringify((opts as any).body) : undefined,
+        });
+        const text = await res.text();
+        const parsed = text ? JSON.parse(text) : null;
+        if (res.status >= 400) {
+          const err: any = new Error(`Request failed with status ${res.status}`);
+          err.response = { statusCode: res.status, body: parsed };
+          throw err;
+        }
+        return parsed;
+      }),
+    } as any;
+  });
+
+  afterEach(() => {
+    nock.cleanAll();
+    nock.enableNetConnect();
+  });
+
+  it('GETs /v1/videos/stats with filters as query string', async () => {
+    nock(BASE_URL)
+      .get('/v1/videos/stats')
+      .query({
+        platform: 'tiktok',
+        campaign: 'aug',
+        blogger: '@alice',
+        search: 'fyp',
+        published_from: '2026-08-01',
+        published_to: '2026-08-23',
+      })
+      .reply(200, { success: true, data: [{ id: 'v1', views: 12345 }] });
+
+    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+    expect(out[0][0].json.data[0].views).toBe(12345);
+  });
+
+  it('paginates via cursor when returnAll is true and API returns next_cursor', async () => {
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'getStats',
+        platform: [],
+        campaign: '',
+        blogger: '',
+        search: '',
+        publishedFrom: '',
+        publishedTo: '',
+        returnAll: true,
+      };
+      return map[name];
+    });
+
+    // Page 1: no filter qs, just cursor-less first call. Use a function matcher
+    // so the lack of query string is also accepted (nock's `.query(true)` only
+    // matches when a query is actually present).
+    nock(BASE_URL)
+      .get('/v1/videos/stats')
+      .query((actual: Record<string, unknown>) => !('cursor' in actual))
+      .reply(200, {
+        success: true,
+        data: [{ id: 'v1' }, { id: 'v2' }],
+        meta: { next_cursor: 'CURSOR_PAGE_2' },
+      });
+    // Page 2: must carry the cursor from page 1.
+    nock(BASE_URL)
+      .get('/v1/videos/stats')
+      .query({ cursor: 'CURSOR_PAGE_2' })
+      .reply(200, {
+        success: true,
+        data: [{ id: 'v3' }],
+        meta: { next_cursor: null },
+      });
+
+    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+    // Paginator wraps aggregated items under { data: [...] }.
+    expect(out[0][0].json.data).toEqual([{ id: 'v1' }, { id: 'v2' }, { id: 'v3' }]);
+    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(2);
+  });
+
+  it('sends an empty query string when no filters are set', async () => {
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'getStats',
+        platform: [],
+        campaign: '',
+        blogger: '',
+        search: '',
+        publishedFrom: '',
+        publishedTo: '',
+        returnAll: false,
+      };
+      return map[name];
+    });
+
+    // Function matcher: accept either no query string OR any (irrelevant) one —
+    // this test is about the executor's qs payload, not the API matcher.
+    nock(BASE_URL)
+      .get('/v1/videos/stats')
+      .query(() => true)
+      .reply(200, { success: true, data: [{ id: 'all-1' }, { id: 'all-2' }] });
+
+    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+    expect(out[0][0].json.data).toEqual([{ id: 'all-1' }, { id: 'all-2' }]);
+    // Verify the actual qs the executor sent is empty (no filter leaks through).
+    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    expect(callArgs.qs).toEqual({});
+  });
+});

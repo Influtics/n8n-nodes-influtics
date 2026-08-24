@@ -19,7 +19,7 @@ import {
   type INodeType,
   type INodeTypeDescription,
 } from 'n8n-workflow';
-import { influticsApiRequest } from '../GenericFunctions.js';
+import { influticsApiRequest, influticsApiRequestAllItems } from '../GenericFunctions.js';
 
 // Per-operation handler map. Track is a single batch op; one call per workflow
 // run regardless of input item count. Future operations (Tasks 5–7) add a key
@@ -42,6 +42,37 @@ const OPERATIONS: Record<string, OperationHandler> = {
       { urls: urlsParam.urls } as IDataObject,
     );
     return response as IDataObject;
+  },
+  getStats: async function (this: IExecuteFunctions, i: number): Promise<IDataObject> {
+    // Build the filter object only from values the caller actually set, so an
+    // unfiltered query goes out as `?` with no params (and the API applies its
+    // own server-side defaults). Empty string / empty array → omit.
+    // Defensive coercion: n8n returns `''` for empty string props, but custom
+    // callers (and tests) may pass an empty array — `[]` is truthy in JS, so we
+    // must explicitly check `Array.isArray` before truthiness.
+    const platformRaw = this.getNodeParameter('platform', i, []) as unknown;
+    const platform = Array.isArray(platformRaw) ? (platformRaw as string[]) : [];
+    const campaignRaw = this.getNodeParameter('campaign', i, '');
+    const campaign = typeof campaignRaw === 'string' ? campaignRaw : '';
+    const bloggerRaw = this.getNodeParameter('blogger', i, '');
+    const blogger = typeof bloggerRaw === 'string' ? bloggerRaw : '';
+    const search = this.getNodeParameter('search', i, '') as string;
+    const publishedFrom = this.getNodeParameter('publishedFrom', i, '') as string;
+    const publishedTo = this.getNodeParameter('publishedTo', i, '') as string;
+    const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
+    const qs: IDataObject = {};
+    if (platform.length > 0) qs.platform = platform;
+    if (campaign) qs.campaign = campaign;
+    if (blogger) qs.blogger = blogger;
+    if (search) qs.search = search;
+    if (publishedFrom) qs.published_from = publishedFrom;
+    if (publishedTo) qs.published_to = publishedTo;
+
+    // Cursor paginator walks `meta.next_cursor`; single-call returns the raw
+    // envelope (success/data/meta). Either way one logical "read" per workflow.
+    return returnAll
+      ? ({ data: await influticsApiRequestAllItems.call(this, 'GET', '/v1/videos/stats', qs) } as IDataObject)
+      : ((await influticsApiRequest.call(this, 'GET', '/v1/videos/stats', undefined, qs)) as IDataObject);
   },
 };
 
@@ -82,14 +113,39 @@ export class InfluticsVideo implements INodeType {
         noDataExpression: true,
         options: [
           {
+            name: 'Get By External ID',
+            value: 'getByExternalId',
+            description: 'Read one tracked video by platform + external ID',
+            action: 'Read one tracked video by platform + external ID',
+          },
+          {
+            name: 'Get By ID',
+            value: 'getById',
+            description: 'Read one tracked video by internal ID',
+            action: 'Read one tracked video by internal ID',
+          },
+          {
+            name: 'Get Stats',
+            value: 'getStats',
+            description: 'Read video-level metrics',
+            action: 'Read video level metrics',
+          },
+          {
             name: 'Track',
             value: 'track',
             description: 'Track videos by URL',
             action: 'Track videos by URL',
           },
+          {
+            name: 'Update By External ID',
+            value: 'updateByExternalId',
+            description: 'Patch metadata on a tracked video',
+            action: 'Patch metadata on a tracked video',
+          },
         ],
         default: 'track',
       },
+      // --- Track --------------------------------------------------------------
       {
         displayName: 'URLs',
         name: 'urls',
@@ -104,6 +160,140 @@ export class InfluticsVideo implements INodeType {
             typeOptions: { multipleValues: true },
             default: [],
             description: 'Up to 50 video URLs to track',
+          },
+        ],
+      },
+      // --- Get Stats ----------------------------------------------------------
+      {
+        displayName: 'Return All',
+        name: 'returnAll',
+        type: 'boolean',
+        displayOptions: { show: { operation: ['getStats'] } },
+        default: false,
+        description: 'Whether to return all results or only up to a given limit',
+      },
+      {
+        displayName: 'Limit',
+        name: 'limit',
+        type: 'number',
+        displayOptions: { show: { operation: ['getStats'], returnAll: [false] } },
+        typeOptions: { minValue: 1 },
+        default: 50,
+        description: 'Max number of results to return',
+      },
+      {
+        displayName: 'Platform',
+        name: 'platform',
+        type: 'multiOptions',
+        displayOptions: { show: { operation: ['getStats'] } },
+        options: [
+          { name: 'TikTok', value: 'tiktok' },
+          { name: 'Instagram', value: 'instagram' },
+          { name: 'YouTube', value: 'youtube' },
+          { name: 'VK', value: 'vk' },
+        ],
+        default: [],
+        description: 'Restrict to one or more platforms',
+      },
+      {
+        displayName: 'Campaign',
+        name: 'campaign',
+        type: 'string',
+        displayOptions: { show: { operation: ['getStats'] } },
+        default: '',
+        description: 'Filter by campaign tag',
+      },
+      {
+        displayName: 'Blogger Username',
+        name: 'blogger',
+        type: 'string',
+        displayOptions: { show: { operation: ['getStats'] } },
+        default: '',
+        description: 'Filter by blogger username',
+      },
+      {
+        displayName: 'Search',
+        name: 'search',
+        type: 'string',
+        displayOptions: { show: { operation: ['getStats'] } },
+        default: '',
+        description: 'Free-text search across tracked videos',
+      },
+      {
+        displayName: 'Published From',
+        name: 'publishedFrom',
+        type: 'dateTime',
+        displayOptions: { show: { operation: ['getStats'] } },
+        default: '',
+      },
+      {
+        displayName: 'Published To',
+        name: 'publishedTo',
+        type: 'dateTime',
+        displayOptions: { show: { operation: ['getStats'] } },
+        default: '',
+      },
+      // --- Get By ID ----------------------------------------------------------
+      {
+        displayName: 'Video ID',
+        name: 'id',
+        type: 'string',
+        displayOptions: { show: { operation: ['getById'] } },
+        default: '',
+        required: true,
+      },
+      // --- Get By External ID / Update By External ID ------------------------
+      {
+        displayName: 'External ID',
+        name: 'externalId',
+        type: 'string',
+        displayOptions: { show: { operation: ['getByExternalId', 'updateByExternalId'] } },
+        default: '',
+        required: true,
+        description: 'The platform-specific video ID (e.g. TikTok video ID)',
+      },
+      {
+        displayName: 'Platform',
+        name: 'platform',
+        type: 'options',
+        displayOptions: { show: { operation: ['getByExternalId', 'updateByExternalId'] } },
+        options: [
+          { name: 'TikTok', value: 'tiktok' },
+          { name: 'Instagram', value: 'instagram' },
+          { name: 'YouTube', value: 'youtube' },
+          { name: 'VK', value: 'vk' },
+        ],
+        default: 'tiktok',
+        required: true,
+      },
+      // --- Update By External ID body fields ---------------------------------
+      {
+        displayName: 'Update Fields',
+        name: 'updateFields',
+        type: 'collection',
+        displayOptions: { show: { operation: ['updateByExternalId'] } },
+        default: {},
+        options: [
+          { displayName: 'Notes', name: 'notes', type: 'string', default: '' },
+          { displayName: 'Campaign', name: 'campaign', type: 'string', default: '' },
+          {
+            displayName: 'Status',
+            name: 'status',
+            type: 'options',
+            options: [
+              { name: 'To Do', value: 'to do' },
+              { name: 'Running', value: 'running' },
+              { name: 'Ended', value: 'ended' },
+            ],
+            default: 'to do',
+          },
+          {
+            displayName: 'Tags',
+            name: 'tags',
+            type: 'string',
+            typeOptions: { multipleValues: true },
+            default: [],
+            description: 'Tag names to attach (existing tags are preserved)',
           },
         ],
       },
