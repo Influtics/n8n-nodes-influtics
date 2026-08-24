@@ -135,6 +135,101 @@ const OPERATIONS: Record<string, OperationHandler> = {
       baseQs,
     )) as IDataObject;
   },
+  // --- Task 6: single-resource lookups + patch -------------------------------
+  // Backend contract (see api-worker handlers in index.js):
+  //   GET    /v1/videos/by-id/{id}
+  //   GET    /v1/videos/by-external-id/{externalId}
+  //   PATCH  /v1/videos/by-external-id/{externalId}
+  //     body: at least one of notes, budget, campaign, video_status, status, tags
+  //   None of these read query params — the (organization_id, external_video_id)
+  //   partial unique index scopes the row, so platform on the wire is cruft.
+  //   The UI keeps the `platform` dropdown as a user-facing hint (it's marked
+  //   `required: true` for `getByExternalId` / `updateByExternalId`), but the
+  //   executor does not forward it.
+  getById: async function (this: IExecuteFunctions, i: number): Promise<IDataObject> {
+    const id = this.getNodeParameter('id', i, '') as string;
+    if (!id) {
+      // Fail fast: without an id we'd send `GET /v1/videos/by-id/` which 404s
+      // with a confusing URL and no actionable error.
+      throw new NodeOperationError(this.getNode(), 'Video ID is required');
+    }
+    const response = await influticsApiRequest.call(
+      this,
+      'GET',
+      `/v1/videos/by-id/${encodeURIComponent(id)}`,
+    );
+    return response as IDataObject;
+  },
+  getByExternalId: async function (this: IExecuteFunctions, i: number): Promise<IDataObject> {
+    const externalId = this.getNodeParameter('externalId', i, '') as string;
+    if (!externalId) {
+      throw new NodeOperationError(this.getNode(), 'External ID is required');
+    }
+    // Defensive: backend ignores platform, but UI marks it `required: true`.
+    // A workflow that somehow arrived here with an empty platform is broken
+    // — fail loudly instead of silently sending a request the backend ignores.
+    const platform = this.getNodeParameter('platform', i, '') as string;
+    if (!platform) {
+      throw new NodeOperationError(this.getNode(), 'Platform is required');
+    }
+    const response = await influticsApiRequest.call(
+      this,
+      'GET',
+      `/v1/videos/by-external-id/${encodeURIComponent(externalId)}`,
+    );
+    return response as IDataObject;
+  },
+  updateByExternalId: async function (this: IExecuteFunctions, i: number): Promise<IDataObject> {
+    const externalId = this.getNodeParameter('externalId', i, '') as string;
+    if (!externalId) {
+      throw new NodeOperationError(this.getNode(), 'External ID is required');
+    }
+    const platform = this.getNodeParameter('platform', i, '') as string;
+    if (!platform) {
+      throw new NodeOperationError(this.getNode(), 'Platform is required');
+    }
+    const updateFields = this.getNodeParameter(
+      'updateFields',
+      i,
+      {} as { notes?: string; campaign?: string; status?: string; tags?: string[] },
+    ) as { notes?: string; campaign?: string; status?: string; tags?: string[] };
+
+    // Backend (handlePatchVideoByExternalId) accepts any of: notes, budget,
+    // campaign, video_status, status, tags. The UI exposes a subset (notes,
+    // campaign, status, tags). Coerce defensively:
+    //   - string fields: include only when non-empty (so we never send
+    //     `campaign: ""` which the backend would silently drop and mask intent)
+    //   - tags: include only when it's a non-empty array
+    // An empty body would 400 server-side; surface that here as a clear
+    // NodeOperationError instead.
+    const body: IDataObject = {};
+    if (typeof updateFields.notes === 'string' && updateFields.notes.length > 0) {
+      body.notes = updateFields.notes;
+    }
+    if (typeof updateFields.campaign === 'string' && updateFields.campaign.length > 0) {
+      body.campaign = updateFields.campaign;
+    }
+    if (typeof updateFields.status === 'string' && updateFields.status.length > 0) {
+      body.status = updateFields.status;
+    }
+    if (Array.isArray(updateFields.tags) && updateFields.tags.length > 0) {
+      body.tags = updateFields.tags;
+    }
+    if (Object.keys(body).length === 0) {
+      throw new NodeOperationError(
+        this.getNode(),
+        'Provide at least one update field (notes, campaign, status, or tags)',
+      );
+    }
+
+    const response = await influticsApiRequest.call(
+      this,
+      'PATCH',
+      `/v1/videos/by-external-id/${encodeURIComponent(externalId)}`,
+      body,
+    );
+    return response as IDataObject;
+  },
 };
 
 export async function executeInfluticsVideo(

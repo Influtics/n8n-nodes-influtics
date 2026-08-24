@@ -401,3 +401,347 @@ describe('InfluticsVideo node — Get Stats operation', () => {
     expect(callArgs.qs).toEqual({ limit: 100 });
   });
 });
+
+describe('InfluticsVideo node — Get By ID operation', () => {
+  let ctx: ReturnType<typeof mockDeep<IExecuteFunctions>>;
+
+  beforeEach(() => {
+    ctx = mockDeep<IExecuteFunctions>();
+    ctx.getNode = vi
+      .fn()
+      .mockReturnValue({ name: 'InfluticsVideo', type: 'n8n-nodes-influtics.influticsVideo', typeVersion: 1 } as any);
+    ctx.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'test-key' });
+    ctx.getInputData = vi.fn().mockReturnValue([{ json: {} }]);
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = { operation: 'getById', id: 'abc-123' };
+      return map[name];
+    });
+    ctx.helpers = {
+      // Same shape as the Track describe block — no qs needed for getById.
+      requestWithAuthentication: vi.fn(async (_name, opts) => {
+        const res = await fetch((opts as any).uri ?? (opts as any).url, {
+          method: (opts as any).method,
+          headers: (opts as any).headers,
+          body: (opts as any).body ? JSON.stringify((opts as any).body) : undefined,
+        });
+        const text = await res.text();
+        const parsed = text ? JSON.parse(text) : null;
+        if (res.status >= 400) {
+          const err: any = new Error(`Request failed with status ${res.status}`);
+          err.response = { statusCode: res.status, body: parsed };
+          throw err;
+        }
+        return parsed;
+      }),
+    } as any;
+  });
+
+  afterEach(() => {
+    nock.cleanAll();
+    nock.enableNetConnect();
+  });
+
+  it('GETs /v1/videos/by-id/{id} with no query string', async () => {
+    nock(BASE_URL)
+      .get('/v1/videos/by-id/abc-123')
+      .reply(200, { success: true, data: { id: 'abc-123', views: 42 } });
+
+    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+    expect(out[0][0].json.data.id).toBe('abc-123');
+    expect(out[0][0].json.data.views).toBe(42);
+    // Backend (handleGetVideoById) does NOT read any query params — guard
+    // against accidental drift that would put `?platform=...` or similar
+    // on the wire.
+    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    expect(callArgs.qs).toBeUndefined();
+  });
+
+  it('rejects empty id with a NodeOperationError WITHOUT hitting the API', async () => {
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = { operation: 'getById', id: '' };
+      return map[name];
+    });
+
+    await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
+      NodeOperationError,
+    );
+    await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
+      /Video ID is required/,
+    );
+    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+  });
+
+  it('surfaces a 404 VIDEO_NOT_FOUND response to the caller', async () => {
+    nock(BASE_URL)
+      .get('/v1/videos/by-id/abc-123')
+      .reply(404, { success: false, error: { code: 'VIDEO_NOT_FOUND', message: 'Video not found' } });
+
+    await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
+      /VIDEO_NOT_FOUND/,
+    );
+  });
+});
+
+describe('InfluticsVideo node — Get By External ID operation', () => {
+  let ctx: ReturnType<typeof mockDeep<IExecuteFunctions>>;
+
+  beforeEach(() => {
+    ctx = mockDeep<IExecuteFunctions>();
+    ctx.getNode = vi
+      .fn()
+      .mockReturnValue({ name: 'InfluticsVideo', type: 'n8n-nodes-influtics.influticsVideo', typeVersion: 1 } as any);
+    ctx.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'test-key' });
+    ctx.getInputData = vi.fn().mockReturnValue([{ json: {} }]);
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'getByExternalId',
+        externalId: 'ext-1',
+        platform: 'tiktok',
+      };
+      return map[name];
+    });
+    ctx.helpers = {
+      // Same shape as the Track describe block — qs not used by getByExternalId
+      // (the backend queries by (organization_id, external_video_id) only).
+      requestWithAuthentication: vi.fn(async (_name, opts) => {
+        const res = await fetch((opts as any).uri ?? (opts as any).url, {
+          method: (opts as any).method,
+          headers: (opts as any).headers,
+          body: (opts as any).body ? JSON.stringify((opts as any).body) : undefined,
+        });
+        const text = await res.text();
+        const parsed = text ? JSON.parse(text) : null;
+        if (res.status >= 400) {
+          const err: any = new Error(`Request failed with status ${res.status}`);
+          err.response = { statusCode: res.status, body: parsed };
+          throw err;
+        }
+        return parsed;
+      }),
+    } as any;
+  });
+
+  afterEach(() => {
+    nock.cleanAll();
+    nock.enableNetConnect();
+  });
+
+  it('GETs /v1/videos/by-external-id/{id} with NO query string (backend ignores platform)', async () => {
+    // The backend (handleGetVideoByExternalId) reads ONLY external_video_id from
+    // the path. The (organization_id, external_video_id) partial unique index
+    // already scopes the row — platform on the wire is cruft. The UI keeps the
+    // `platform` dropdown as a hint for users, but we don't forward it.
+    nock(BASE_URL)
+      .get('/v1/videos/by-external-id/ext-1')
+      .reply(200, { success: true, data: { external_id: 'ext-1', views: 99 } });
+
+    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+    expect(out[0][0].json.data.external_id).toBe('ext-1');
+    expect(out[0][0].json.data.views).toBe(99);
+    // Belt-and-braces: query string must be absent even though the UI
+    // collected `platform=tiktok`.
+    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    expect(callArgs.qs).toBeUndefined();
+  });
+
+  it('rejects empty externalId with a NodeOperationError WITHOUT hitting the API', async () => {
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'getByExternalId',
+        externalId: '',
+        platform: 'tiktok',
+      };
+      return map[name];
+    });
+
+    await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
+      NodeOperationError,
+    );
+    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+  });
+
+  it('rejects missing platform with a NodeOperationError WITHOUT hitting the API', async () => {
+    // The backend doesn't require platform, but the UI marks it required and
+    // it's a useful user-facing hint. Defensive guard keeps workflows honest.
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'getByExternalId',
+        externalId: 'ext-1',
+        platform: '',
+      };
+      return map[name];
+    });
+
+    await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
+      NodeOperationError,
+    );
+    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+  });
+});
+
+describe('InfluticsVideo node — Update By External ID operation', () => {
+  let ctx: ReturnType<typeof mockDeep<IExecuteFunctions>>;
+
+  beforeEach(() => {
+    ctx = mockDeep<IExecuteFunctions>();
+    ctx.getNode = vi
+      .fn()
+      .mockReturnValue({ name: 'InfluticsVideo', type: 'n8n-nodes-influtics.influticsVideo', typeVersion: 1 } as any);
+    ctx.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'test-key' });
+    ctx.getInputData = vi.fn().mockReturnValue([{ json: {} }]);
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'updateByExternalId',
+        externalId: 'ext-1',
+        platform: 'tiktok',
+        updateFields: {
+          notes: 'follow up',
+          campaign: 'aug',
+          status: 'running',
+          tags: ['urgent'],
+        },
+      };
+      return map[name];
+    });
+    ctx.helpers = {
+      // Same shape as the Track describe block — body is JSON-stringified so
+      // nock's `.patch(path, body)` matcher can deep-equal the parsed JSON.
+      requestWithAuthentication: vi.fn(async (_name, opts) => {
+        const res = await fetch((opts as any).uri ?? (opts as any).url, {
+          method: (opts as any).method,
+          headers: (opts as any).headers,
+          body: (opts as any).body ? JSON.stringify((opts as any).body) : undefined,
+        });
+        const text = await res.text();
+        const parsed = text ? JSON.parse(text) : null;
+        if (res.status >= 400) {
+          const err: any = new Error(`Request failed with status ${res.status}`);
+          err.response = { statusCode: res.status, body: parsed };
+          throw err;
+        }
+        return parsed;
+      }),
+    } as any;
+  });
+
+  afterEach(() => {
+    nock.cleanAll();
+    nock.enableNetConnect();
+  });
+
+  it('PATCHes /v1/videos/by-external-id/{id} with only the fields the caller set', async () => {
+    // Backend (handlePatchVideoByExternalId) accepts notes, budget, campaign,
+    // video_status, status, tags. The UI exposes a subset (notes, campaign,
+    // status, tags). The executor must:
+    //   - coerce string fields with non-empty length
+    //   - coerce tags only when it's a non-empty array
+    //   - omit empty/falsy values entirely (never send `campaign: ""`)
+    nock(BASE_URL)
+      .patch('/v1/videos/by-external-id/ext-1', {
+        notes: 'follow up',
+        campaign: 'aug',
+        status: 'running',
+        tags: ['urgent'],
+      })
+      .reply(200, {
+        success: true,
+        data: {
+          video_id: 'internal-uuid',
+          external_video_id: 'ext-1',
+          updated_fields: ['notes', 'campaign_tag', 'status', 'tags'],
+          tags_result: { matched: ['urgent'], created: [] },
+        },
+      });
+
+    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+    expect(out[0][0].json.data.updated_fields).toEqual([
+      'notes',
+      'campaign_tag',
+      'status',
+      'tags',
+    ]);
+    // Backend does not read platform — guard against accidental qs.
+    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    expect(callArgs.qs).toBeUndefined();
+  });
+
+  it('omits empty update fields from the body (no `campaign: ""` cruft)', async () => {
+    // Caller set only `notes`. The executor must NOT send `campaign: ""`,
+    // `status: ""`, or `tags: []` — those would be silently dropped server-side
+    // but would mask user intent if the schema ever becomes strict.
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'updateByExternalId',
+        externalId: 'ext-1',
+        platform: 'tiktok',
+        updateFields: {
+          notes: 'just notes',
+          campaign: '',
+          status: '',
+          tags: [],
+        },
+      };
+      return map[name];
+    });
+
+    nock(BASE_URL)
+      .patch('/v1/videos/by-external-id/ext-1', { notes: 'just notes' })
+      .reply(200, {
+        success: true,
+        data: { video_id: 'internal-uuid', external_video_id: 'ext-1', updated_fields: ['notes'] },
+      });
+
+    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+    expect(out[0][0].json.data.updated_fields).toEqual(['notes']);
+  });
+
+  it('rejects empty updateFields with a NodeOperationError WITHOUT hitting the API', async () => {
+    // Backend (handlePatchVideoByExternalId) requires at least one of the
+    // editable fields — sending an empty body would 400. Fail fast with a
+    // clear UI message instead of letting the workflow silently 400.
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'updateByExternalId',
+        externalId: 'ext-1',
+        platform: 'tiktok',
+        updateFields: { notes: '', campaign: '', status: '', tags: [] },
+      };
+      return map[name];
+    });
+
+    await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
+      NodeOperationError,
+    );
+    await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
+      /Provide at least one update field/,
+    );
+    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+  });
+
+  it('rejects empty externalId with a NodeOperationError WITHOUT hitting the API', async () => {
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'updateByExternalId',
+        externalId: '',
+        platform: 'tiktok',
+        updateFields: { notes: 'x' },
+      };
+      return map[name];
+    });
+
+    await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
+      NodeOperationError,
+    );
+    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+  });
+
+  it('surfaces a 404 VIDEO_NOT_FOUND response to the caller', async () => {
+    nock(BASE_URL)
+      .patch('/v1/videos/by-external-id/ext-1')
+      .reply(404, { success: false, error: { code: 'VIDEO_NOT_FOUND', message: 'Video not found' } });
+
+    await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
+      /VIDEO_NOT_FOUND/,
+    );
+  });
+});
