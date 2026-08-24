@@ -168,12 +168,11 @@ describe('InfluticsVideo node — Get Stats operation', () => {
     ctx.getNodeParameter = vi.fn((name: string) => {
       const map: Record<string, any> = {
         operation: 'getStats',
-        platform: ['tiktok'],
-        campaign: 'aug',
-        blogger: '@alice',
-        search: 'fyp',
-        publishedFrom: '2026-08-01',
-        publishedTo: '2026-08-23',
+        platform: 'tiktok',
+        status: 'active',
+        blogger_username: '@alice',
+        sort: 'views',
+        order: 'desc',
         returnAll: false,
         limit: 50,
       };
@@ -226,126 +225,179 @@ describe('InfluticsVideo node — Get Stats operation', () => {
     nock.enableNetConnect();
   });
 
-  it('GETs /v1/videos/stats with filters as query string', async () => {
+  it('GETs /v1/videos/stats with platform/status/blogger_username/sort/order as query string', async () => {
     nock(BASE_URL)
       .get('/v1/videos/stats')
       .query({
         platform: 'tiktok',
-        campaign: 'aug',
-        blogger: '@alice',
-        search: 'fyp',
-        published_from: '2026-08-01',
-        published_to: '2026-08-23',
-        // `limit: 50` is forwarded because the beforeEach mock returns
-        // `returnAll: false, limit: 50`. The fix wires `limit` into the qs
-        // for non-returnAll calls (server default 50 matches the field default).
+        status: 'active',
+        blogger_username: '@alice',
+        sort: 'views',
+        order: 'desc',
         limit: 50,
       })
-      .reply(200, { success: true, data: [{ id: 'v1', views: 12345 }] });
+      .reply(200, {
+        success: true,
+        data: {
+          data: [{ video_id: 'v1', views: 12345 }],
+          pagination: { total: 1, limit: 50, offset: 0, has_more: false },
+        },
+        meta: {},
+      });
 
     const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
-    expect(out[0][0].json.data[0].views).toBe(12345);
+    // The API envelope nests items under `data.data`; the executor returns
+    // the raw envelope, so the n8n output mirrors what the API sent.
+    expect(out[0][0].json.data.data[0].views).toBe(12345);
+    // Verify the executor's qs payload too — guards against silent drift where
+    // the URL is right but the helper stops spreading it.
+    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    expect(callArgs.qs).toEqual({
+      platform: 'tiktok',
+      status: 'active',
+      blogger_username: '@alice',
+      sort: 'views',
+      order: 'desc',
+      limit: 50,
+    });
   });
 
-  it('paginates via cursor when returnAll is true and API returns next_cursor', async () => {
+  it('paginates via offset + has_more when returnAll is true', async () => {
     ctx.getNodeParameter = vi.fn((name: string) => {
       const map: Record<string, any> = {
         operation: 'getStats',
-        platform: [],
-        campaign: '',
-        blogger: '',
-        search: '',
-        publishedFrom: '',
-        publishedTo: '',
+        platform: '',
+        status: '',
+        blogger_username: '',
+        sort: '',
+        order: '',
         returnAll: true,
+        limit: 2,
       };
       return map[name];
     });
 
-    // Page 1: no filter qs, just cursor-less first call. Use a function matcher
-    // so the lack of query string is also accepted (nock's `.query(true)` only
-    // matches when a query is actually present).
+    // The real API returns items under data.data and pagination under
+    // data.pagination. Page 1 reports has_more: true with offset 0; page 2
+    // returns has_more: false (no more rows).
     nock(BASE_URL)
       .get('/v1/videos/stats')
-      .query((actual: Record<string, unknown>) => !('cursor' in actual))
+      .query((actual: Record<string, unknown>) =>
+        actual.limit === '2' && actual.offset === '0',
+      )
       .reply(200, {
         success: true,
-        data: [{ id: 'v1' }, { id: 'v2' }],
-        meta: { next_cursor: 'CURSOR_PAGE_2' },
+        data: {
+          data: [{ video_id: 'v1' }, { video_id: 'v2' }],
+          pagination: { total: 3, limit: 2, offset: 0, has_more: true },
+        },
+        meta: {},
       });
-    // Page 2: must carry the cursor from page 1.
     nock(BASE_URL)
       .get('/v1/videos/stats')
-      .query({ cursor: 'CURSOR_PAGE_2' })
+      .query((actual: Record<string, unknown>) =>
+        actual.limit === '2' && actual.offset === '2',
+      )
       .reply(200, {
         success: true,
-        data: [{ id: 'v3' }],
-        meta: { next_cursor: null },
+        data: {
+          data: [{ video_id: 'v3' }],
+          pagination: { total: 3, limit: 2, offset: 2, has_more: false },
+        },
+        meta: {},
       });
 
     const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
-    // Paginator wraps aggregated items under { data: [...] }.
-    expect(out[0][0].json.data).toEqual([{ id: 'v1' }, { id: 'v2' }, { id: 'v3' }]);
+    // The executor aggregates the pages and wraps them under { data: [...] }
+    // so the downstream n8n node sees one item per video.
+    expect(out[0][0].json.data).toEqual([
+      { video_id: 'v1' },
+      { video_id: 'v2' },
+      { video_id: 'v3' },
+    ]);
     expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(2);
+    // The second call must have advanced the offset (no cursor — offset walk).
+    const secondCallQs = (ctx.helpers.requestWithAuthentication as any).mock.calls[1][1].qs;
+    expect(secondCallQs.offset).toBe(2);
   });
 
-  it('sends an empty query string when no filters are set', async () => {
+  it('sends a single call with default limit=50 and platform=tiktok when returnAll is false', async () => {
+    // Override defaults explicitly: the test asserts the exact qs the executor
+    // sends when the caller hasn't typed a limit.
     ctx.getNodeParameter = vi.fn((name: string) => {
       const map: Record<string, any> = {
         operation: 'getStats',
-        platform: [],
-        campaign: '',
-        blogger: '',
-        search: '',
-        publishedFrom: '',
-        publishedTo: '',
+        platform: 'tiktok',
+        status: '',
+        blogger_username: '',
+        sort: '',
+        order: '',
         returnAll: false,
-      };
-      return map[name];
-    });
-
-    // Function matcher: accept either no query string OR any (irrelevant) one —
-    // this test is about the executor's qs payload, not the API matcher.
-    nock(BASE_URL)
-      .get('/v1/videos/stats')
-      .query(() => true)
-      .reply(200, { success: true, data: [{ id: 'all-1' }, { id: 'all-2' }] });
-
-    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
-    expect(out[0][0].json.data).toEqual([{ id: 'all-1' }, { id: 'all-2' }]);
-    // Verify the actual qs the executor sent is empty (no filter leaks through).
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
-    expect(callArgs.qs).toEqual({});
-  });
-
-  it('forwards `limit` to the API as `limit=<n>` when returnAll is false', async () => {
-    // Override with a known limit; everything else empty so the qs we send is
-    // exactly { limit: 5 } and nothing else.
-    ctx.getNodeParameter = vi.fn((name: string) => {
-      const map: Record<string, any> = {
-        operation: 'getStats',
-        platform: [],
-        campaign: '',
-        blogger: '',
-        search: '',
-        publishedFrom: '',
-        publishedTo: '',
-        returnAll: false,
-        limit: 5,
+        limit: 50,
       };
       return map[name];
     });
 
     nock(BASE_URL)
       .get('/v1/videos/stats')
-      .query({ limit: 5 })
-      .reply(200, { success: true, data: [{ id: 'v1' }], meta: {} });
+      .query((actual: Record<string, unknown>) => {
+        if (actual.platform !== 'tiktok') return false;
+        if (actual.limit !== '50') return false;
+        // offset must be absent or 0 — handler does not set qs.offset for the
+        // single-call branch (server defaults to 0).
+        if (actual.offset !== undefined && actual.offset !== '0') return false;
+        return true;
+      })
+      .reply(200, {
+        success: true,
+        data: {
+          data: [{ video_id: 'v1' }],
+          pagination: { total: 1, limit: 50, offset: 0, has_more: false },
+        },
+        meta: {},
+      });
 
     const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
-    expect(out[0][0].json.data).toEqual([{ id: 'v1' }]);
-    // Sanity-check the executor's qs payload too — guards against silent drift
-    // where the URL is right but the helper stops spreading it.
+    expect(out[0][0].json.data.data[0].video_id).toBe('v1');
+    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(1);
+  });
+
+  it('clamps `limit` to the API hard cap of 100 when the caller passes 999', async () => {
+    // Simulates "user typed 999": the executor's defensive Math.min(limit, 100)
+    // must clamp before forwarding. The UI's `typeOptions.maxValue = 100`
+    // would normally prevent this, but we assert handler-side coercion as
+    // defense-in-depth against custom callers / future schema drift.
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'getStats',
+        platform: '',
+        status: '',
+        blogger_username: '',
+        sort: '',
+        order: '',
+        returnAll: false,
+        limit: 999,
+      };
+      return map[name];
+    });
+
+    nock(BASE_URL)
+      .get('/v1/videos/stats')
+      .query({ limit: 100 })
+      .reply(200, {
+        success: true,
+        data: {
+          data: [],
+          pagination: { total: 0, limit: 100, offset: 0, has_more: false },
+        },
+        meta: {},
+      });
+
+    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+    // Single-call branch returns the raw envelope, so data.data is the items
+    // array and is empty here.
+    expect(out[0][0].json.data.data).toEqual([]);
     const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
-    expect(callArgs.qs).toEqual({ limit: 5 });
+    expect(callArgs.qs).toEqual({ limit: 100 });
   });
 });
