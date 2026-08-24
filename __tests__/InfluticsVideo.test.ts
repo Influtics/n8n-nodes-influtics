@@ -236,6 +236,10 @@ describe('InfluticsVideo node — Get Stats operation', () => {
         search: 'fyp',
         published_from: '2026-08-01',
         published_to: '2026-08-23',
+        // `limit: 50` is forwarded because the beforeEach mock returns
+        // `returnAll: false, limit: 50`. The fix wires `limit` into the qs
+        // for non-returnAll calls (server default 50 matches the field default).
+        limit: 50,
       })
       .reply(200, { success: true, data: [{ id: 'v1', views: 12345 }] });
 
@@ -312,5 +316,36 @@ describe('InfluticsVideo node — Get Stats operation', () => {
     // Verify the actual qs the executor sent is empty (no filter leaks through).
     const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toEqual({});
+  });
+
+  it('forwards `limit` to the API as `limit=<n>` when returnAll is false', async () => {
+    // Override with a known limit; everything else empty so the qs we send is
+    // exactly { limit: 5 } and nothing else.
+    ctx.getNodeParameter = vi.fn((name: string) => {
+      const map: Record<string, any> = {
+        operation: 'getStats',
+        platform: [],
+        campaign: '',
+        blogger: '',
+        search: '',
+        publishedFrom: '',
+        publishedTo: '',
+        returnAll: false,
+        limit: 5,
+      };
+      return map[name];
+    });
+
+    nock(BASE_URL)
+      .get('/v1/videos/stats')
+      .query({ limit: 5 })
+      .reply(200, { success: true, data: [{ id: 'v1' }], meta: {} });
+
+    const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+    expect(out[0][0].json.data).toEqual([{ id: 'v1' }]);
+    // Sanity-check the executor's qs payload too — guards against silent drift
+    // where the URL is right but the helper stops spreading it.
+    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    expect(callArgs.qs).toEqual({ limit: 5 });
   });
 });

@@ -60,6 +60,17 @@ const OPERATIONS: Record<string, OperationHandler> = {
     const publishedFrom = this.getNodeParameter('publishedFrom', i, '') as string;
     const publishedTo = this.getNodeParameter('publishedTo', i, '') as string;
     const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
+    // `limit` is only meaningful when `returnAll` is false; the `returnAll` paginator
+    // walks `meta.next_cursor` and owns the page count, so a limit there would just
+    // be ignored (or worse, fight the cursor walk). The UI hides this field under
+    // the same `returnAll: [false]` guard so callers won't set it for `returnAll`
+    // branches, but we still gate here for safety.
+    //
+    // The Influtics public docs for GET /v1/videos/stats name the param `limit`
+    // (range 1–100, default 50). The Influtics MCP server's `list_tracked_videos`
+    // tool uses `page_size` instead — different endpoint contract, not a typo.
+    const limitRaw = this.getNodeParameter('limit', i, 50) as unknown;
+    const limit = typeof limitRaw === 'number' && limitRaw > 0 ? limitRaw : undefined;
     const qs: IDataObject = {};
     if (platform.length > 0) qs.platform = platform;
     if (campaign) qs.campaign = campaign;
@@ -67,6 +78,10 @@ const OPERATIONS: Record<string, OperationHandler> = {
     if (search) qs.search = search;
     if (publishedFrom) qs.published_from = publishedFrom;
     if (publishedTo) qs.published_to = publishedTo;
+    // Lenient: omit `limit` when missing / non-positive so the server's own
+    // default (50) wins. Throwing here would punish custom callers that pass
+    // a stale schema.
+    if (!returnAll && limit !== undefined) qs.limit = limit;
 
     // Cursor paginator walks `meta.next_cursor`; single-call returns the raw
     // envelope (success/data/meta). Either way one logical "read" per workflow.
