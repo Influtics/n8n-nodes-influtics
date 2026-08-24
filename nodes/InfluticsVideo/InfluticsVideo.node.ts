@@ -1,3 +1,16 @@
+/**
+ * Influtics Video node.
+ *
+ * Implementation choices:
+ * - File lives at nodes/InfluticsVideo/InfluticsVideo.node.ts — required by the
+ *   eslint-plugin-n8n-nodes-base `node-dirname-against-convention` rule.
+ * - `executeInfluticsVideo` is also exported as a named function so unit tests
+ *   can drive the executor without instantiating the INodeType class.
+ * - The description "Track and read" is forward-looking; other operations land
+ *   in Tasks 5–7 but each ships as a separate commit so the diff stays small.
+ * - The unimplemented-operation branch keeps the executor safe if a future
+ *   version's parameters somehow leak an unknown value.
+ */
 import {
   NodeOperationError,
   type IDataObject,
@@ -8,31 +21,45 @@ import {
 } from 'n8n-workflow';
 import { influticsApiRequest } from '../GenericFunctions.js';
 
+// Per-operation handler map. Track is a single batch op; one call per workflow
+// run regardless of input item count. Future operations (Tasks 5–7) add a key
+// + tests here without growing the executor's else-if chain.
+type OperationHandler = (
+  this: IExecuteFunctions,
+  _i: number,
+) => Promise<IDataObject>;
+
+const OPERATIONS: Record<string, OperationHandler> = {
+  track: async function (this: IExecuteFunctions, _i: number): Promise<IDataObject> {
+    const urlsParam = this.getNodeParameter('urls', _i) as { urls: string[] };
+    if (!Array.isArray(urlsParam.urls) || urlsParam.urls.length === 0) {
+      throw new NodeOperationError(this.getNode(), 'Provide at least one video URL');
+    }
+    const response = await influticsApiRequest.call(
+      this,
+      'POST',
+      '/v1/videos/track',
+      { urls: urlsParam.urls } as IDataObject,
+    );
+    return response as IDataObject;
+  },
+};
+
 export async function executeInfluticsVideo(
   this: IExecuteFunctions,
-  items: INodeExecutionData[],
+  _items: INodeExecutionData[],
 ): Promise<INodeExecutionData[][]> {
   const operation = this.getNodeParameter('operation', 0) as string;
-  const returnData: INodeExecutionData[] = [];
-
-  for (let i = 0; i < items.length; i++) {
-    if (operation === 'track') {
-      const urlsParam = this.getNodeParameter('urls', i) as { urls: string[] };
-      const response = await influticsApiRequest.call(
-        this,
-        'POST',
-        '/v1/videos/track',
-        { urls: urlsParam.urls } as IDataObject,
-      );
-      returnData.push({ json: response });
-    } else {
-      throw new NodeOperationError(
-        this.getNode(),
-        `Operation "${operation}" not yet implemented in InfluticsVideo node`,
-      );
-    }
+  const handler = OPERATIONS[operation];
+  if (!handler) {
+    throw new NodeOperationError(
+      this.getNode(),
+      `Operation "${operation}" not yet implemented in InfluticsVideo node`,
+    );
   }
-  return [returnData];
+  // Track is a single batch op; one call per workflow run regardless of input item count.
+  const response = await handler.call(this, 0);
+  return [[{ json: response }]];
 }
 
 export class InfluticsVideo implements INodeType {
