@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-influtics",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Official Influtics integration for n8n — track influencer videos, bloggers, and trends",
   "author": {
     "name": "Influtics",
@@ -20,6 +20,7 @@
   "main": "dist/index.js",
   "files": ["dist"],
   "scripts": {
+    "prepublishOnly": "npm run build && npm run lint && npm test",
     "build": "n8n-node build",
     "dev": "n8n-node dev",
     "lint": "eslint . --ext .ts",
