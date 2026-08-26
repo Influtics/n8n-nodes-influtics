@@ -1,0 +1,56 @@
+{
+  "name": "n8n-nodes-influtics",
+  "version": "1.0.0",
+  "description": "Official Influtics integration for n8n — track influencer videos, bloggers, and trends",
+  "author": {
+    "name": "Influtics",
+    "email": "team@influtics.com",
+    "url": "https://influtics.com"
+  },
+  "keywords": [
+    "n8n",
+    "n8n-community-node",
+    "n8n-community-node-package",
+    "n8ncommunity",
+    "influtics",
+    "influencer-marketing"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": ["dist"],
+  "scripts": {
+    "build": "n8n-node build",
+    "dev": "n8n-node dev",
+    "lint": "eslint . --ext .ts",
+    "lintfix": "eslint . --ext .ts --fix",
+    "format": "prettier --write .",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "peerDependencies": {
+    "n8n-nodes-base": "^1.0.0",
+    "n8n-workflow": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-n8n-nodes-base": "^1.16.0",
+    "@n8n/node-cli": "^0.44.5",
+    "nock": "^14.0.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "vitest-mock-extended": "^2.0.0"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "nodes": ["dist/nodes/**/*.node.js"],
+    "credentials": ["dist/credentials/**/*.credentials.js"]
+  }
+}
