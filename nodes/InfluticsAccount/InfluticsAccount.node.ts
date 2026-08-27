@@ -62,7 +62,7 @@ import {
   type INodeType,
   type INodeTypeDescription,
 } from 'n8n-workflow';
-import { influticsApiRequest } from '../GenericFunctions.js';
+import { influticsApiRequest } from '../GenericFunctions';
 
 // Per-operation handler map. Neither endpoint takes user input — both are
 // single-batch, no-params GETs. Same pattern as InfluticsVideo/InfluticsBlogger

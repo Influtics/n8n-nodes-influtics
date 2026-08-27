@@ -34,7 +34,7 @@ import {
   type INodeType,
   type INodeTypeDescription,
 } from 'n8n-workflow';
-import { influticsApiRequest } from '../GenericFunctions.js';
+import { influticsApiRequest } from '../GenericFunctions';
 
 // Per-operation handler map. Even with one operation today, use the map for
 // pattern consistency with the InfluticsVideo / InfluticsBlogger nodes —
