@@ -141,13 +141,15 @@ export class InfluticsTrend implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'Influtics Trend',
     name: 'influticsTrend',
-    icon: 'file:influtics.svg',
+    icon: { light: 'file:influtics.svg', dark: 'file:influtics.svg' },
     group: ['transform'],
     version: 1,
+    subtitle: '={{ $parameter["operation"] }}',
     description: 'Search Influtics trends by keyword',
     defaults: { name: 'Influtics Trend' },
     inputs: ['main'],
     outputs: ['main'],
+    usableAsTool: true,
     credentials: [{ name: 'influticsApi', required: true }],
     properties: [
       {
@@ -162,8 +164,7 @@ export class InfluticsTrend implements INodeType {
             name: 'Search',
             value: 'search',
             description: 'Search TikTok or YouTube trends by keyword',
-            // eslint-disable-next-line n8n-nodes-base/node-param-operation-option-action-miscased
-            action: 'Search TikTok or YouTube trends by keyword',
+            action: 'Search tiktok or youtube trends by keyword',
           },
         ],
         default: 'search',

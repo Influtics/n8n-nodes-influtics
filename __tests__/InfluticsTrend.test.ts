@@ -33,7 +33,7 @@ function makeSearchCtx(overrides: Record<string, any> = {}) {
     return map[name];
   });
   ctx.helpers = {
-    requestWithAuthentication: vi.fn(async (_name, opts) => {
+    httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
       let url = (opts as any).uri ?? (opts as any).url;
       const qs = (opts as any).qs;
       if (qs && typeof qs === 'object') {
@@ -106,7 +106,7 @@ describe('InfluticsTrend node — Search operation: happy path', () => {
     expect(out[0][0].json.meta.credits_used).toBe(1);
     // Verify the executor's qs payload too — guards against silent drift where
     // the URL is right but the helper stops spreading it.
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toEqual({ keyword: 'fidget toys', platform: 'tiktok' });
   });
 
@@ -170,7 +170,7 @@ describe('InfluticsTrend node — Search operation: all optional params', () => 
 
     const out = await executeInfluticsTrend.call(ctx as any, [{ json: {} }]);
     expect(out[0][0].json.data[0].keyword).toBe('fidget toys');
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toEqual({
       keyword: 'fidget toys',
       platform: 'tiktok',
@@ -199,7 +199,7 @@ describe('InfluticsTrend node — Search operation: all optional params', () => 
 
     const out = await executeInfluticsTrend.call(ctx as any, [{ json: {} }]);
     expect(out[0][0].json.data[0].keyword).toBe('fidget toys');
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs.days).toBe('0');
   });
 
@@ -245,7 +245,7 @@ describe('InfluticsTrend node — Search operation: defensive guards (no API cal
     await expect(executeInfluticsTrend.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       /Keyword is required/,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('rejects whitespace-only keyword with a NodeOperationError WITHOUT hitting the API', async () => {
@@ -257,7 +257,7 @@ describe('InfluticsTrend node — Search operation: defensive guards (no API cal
     await expect(executeInfluticsTrend.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       NodeOperationError,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('rejects empty platform with a NodeOperationError WITHOUT hitting the API', async () => {
@@ -270,7 +270,7 @@ describe('InfluticsTrend node — Search operation: defensive guards (no API cal
     await expect(executeInfluticsTrend.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       /Platform is required/,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('rejects invalid platform (not in {tiktok, youtube}) WITHOUT hitting the API', async () => {
@@ -284,7 +284,7 @@ describe('InfluticsTrend node — Search operation: defensive guards (no API cal
     await expect(executeInfluticsTrend.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       /Platform must be one of: tiktok, youtube/,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('rejects region that is not a two-letter ISO 3166-1 code WITHOUT hitting the API', async () => {
@@ -301,7 +301,7 @@ describe('InfluticsTrend node — Search operation: defensive guards (no API cal
     await expect(executeInfluticsTrend.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       /Region must be a two-letter ISO 3166-1 code/,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('rejects region that is a single letter WITHOUT hitting the API', async () => {
@@ -313,7 +313,7 @@ describe('InfluticsTrend node — Search operation: defensive guards (no API cal
     await expect(executeInfluticsTrend.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       NodeOperationError,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('rejects days value not in the backend allow-list WITHOUT hitting the API', async () => {
@@ -329,7 +329,7 @@ describe('InfluticsTrend node — Search operation: defensive guards (no API cal
     await expect(executeInfluticsTrend.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       /Days must be one of/,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('rejects non-numeric days value WITHOUT hitting the API', async () => {
@@ -342,7 +342,7 @@ describe('InfluticsTrend node — Search operation: defensive guards (no API cal
     await expect(executeInfluticsTrend.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       NodeOperationError,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 });
 
@@ -383,7 +383,7 @@ describe('InfluticsTrend node — Search operation: empty optional fields stripp
 
     const out = await executeInfluticsTrend.call(ctx as any, [{ json: {} }]);
     expect(out[0][0].json.data[0].keyword).toBe('fidget toys');
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(Object.keys(callArgs.qs)).toEqual(['keyword', 'platform']);
   });
 
@@ -412,7 +412,7 @@ describe('InfluticsTrend node — Search operation: empty optional fields stripp
 
     const out = await executeInfluticsTrend.call(ctx as any, [{ json: {} }]);
     expect(out[0][0].json.data[0].keyword).toBe('fidget toys');
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toEqual({
       keyword: 'fidget toys',
       platform: 'tiktok',
@@ -536,7 +536,7 @@ describe('InfluticsTrend node — Search operation: single-batch invariant', () 
     // how many items the caller wired in. Mirrors the Track-videos and
     // Track-bloggers pattern.
     const ctx = makeSearchCtx();
-    ctx.helpers.requestWithAuthentication = vi
+    ctx.helpers.httpRequestWithAuthentication = vi
       .fn()
       .mockResolvedValue({
         success: true,
@@ -547,7 +547,7 @@ describe('InfluticsTrend node — Search operation: single-batch invariant', () 
     const items = [{ json: {} }, { json: {} }, { json: {} }];
     const out = await executeInfluticsTrend.call(ctx as any, items);
 
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(1);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(1);
     expect(out[0]).toEqual([
       {
         json: {

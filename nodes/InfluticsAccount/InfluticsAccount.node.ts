@@ -112,7 +112,7 @@ export class InfluticsAccount implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'Influtics Account',
     name: 'influticsAccount',
-    icon: 'file:influtics.svg',
+    icon: { light: 'file:influtics.svg', dark: 'file:influtics.svg' },
     group: ['transform'],
     version: 1,
     description: 'Read Influtics account usage and limits',
@@ -127,6 +127,7 @@ export class InfluticsAccount implements INodeType {
     defaults: { name: 'Influtics Account' },
     inputs: ['main'],
     outputs: ['main'],
+    usableAsTool: true,
     credentials: [{ name: 'influticsApi', required: true }],
     properties: [
       {

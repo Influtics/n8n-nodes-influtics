@@ -8,7 +8,7 @@ const BASE_URL = 'https://api.influtics.com';
 
 // Path-only helper — both Account endpoints take no qs / no body, so the
 // shape mirrors the Get Job helper in InfluticsBlogger.test.ts. Mirrors n8n's
-// real `requestWithAuthentication`:
+// real `httpRequestWithAuthentication`:
 //   - 2xx → returns the parsed JSON body directly
 //   - non-2xx → throws an Error whose `.response.body` holds the parsed error body
 // GenericFunctions.mapInfluticsError reads `rawError.response.body.error`.
@@ -27,7 +27,7 @@ function makeCtx(overrides: Record<string, any> = {}) {
     return map[name];
   });
   ctx.helpers = {
-    requestWithAuthentication: vi.fn(async (_name, opts) => {
+    httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
       const res = await fetch((opts as any).uri ?? (opts as any).url, {
         method: (opts as any).method,
         headers: (opts as any).headers,
@@ -107,7 +107,7 @@ describe('InfluticsAccount node — happy path (Get Usage + Get Limits)', () => 
     expect(out[0][0].json.meta.processing_time_ms).toBe(42);
     // Guard against silent drift where the URL is right but the helper starts
     // sending qs/body the backend ignores.
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toBeUndefined();
     expect(callArgs.body).toBeUndefined();
   });
@@ -148,7 +148,7 @@ describe('InfluticsAccount node — happy path (Get Usage + Get Limits)', () => 
     });
     expect(out[0][0].json.meta.request_id).toBe('req-limits-1');
     expect(out[0][0].json.meta.processing_time_ms).toBe(5);
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toBeUndefined();
     expect(callArgs.body).toBeUndefined();
   });
@@ -262,7 +262,7 @@ describe('InfluticsAccount node — single-batch invariant', () => {
     // how many items the caller wired in. Mirrors the Track-videos and
     // Track-bloggers single-batch pattern.
     const ctx = makeCtx({ operation: 'getUsage' });
-    ctx.helpers.requestWithAuthentication = vi.fn().mockResolvedValue({
+    ctx.helpers.httpRequestWithAuthentication = vi.fn().mockResolvedValue({
       success: true,
       data: {
         usage_history: [],
@@ -279,7 +279,7 @@ describe('InfluticsAccount node — single-batch invariant', () => {
     const items = [{ json: {} }, { json: {} }, { json: {} }];
     const out = await executeInfluticsAccount.call(ctx as any, items);
 
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(1);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(1);
     expect(out[0]).toEqual([
       {
         json: {
@@ -303,7 +303,7 @@ describe('InfluticsAccount node — single-batch invariant', () => {
     // Same single-batch invariant on the Limits endpoint — guards against
     // silent drift that would loop over input items.
     const ctx = makeCtx({ operation: 'getLimits' });
-    ctx.helpers.requestWithAuthentication = vi.fn().mockResolvedValue({
+    ctx.helpers.httpRequestWithAuthentication = vi.fn().mockResolvedValue({
       success: true,
       data: {
         rate_limits: {
@@ -320,7 +320,7 @@ describe('InfluticsAccount node — single-batch invariant', () => {
     const items = [{ json: {} }, { json: {} }, { json: {} }];
     const out = await executeInfluticsAccount.call(ctx as any, items);
 
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(1);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(1);
     expect(out[0]).toEqual([
       {
         json: {

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-influtics",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Official Influtics integration for n8n — track influencer videos, bloggers, and trends",
   "author": {
     "name": "Influtics",
@@ -41,8 +41,7 @@
     "node": ">=20.0.0"
   },
   "peerDependencies": {
-    "n8n-nodes-base": "^1.0.0",
-    "n8n-workflow": "^1.0.0"
+    "n8n-workflow": "*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
