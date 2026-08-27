@@ -2,6 +2,19 @@
 
 All notable changes to `n8n-nodes-influtics` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/), versioning follows [SemVer](https://semver.org/).
 
+## [1.0.5] - 2026-08-27
+
+### Fixed
+
+- **`Error loading package: Unexpected token '*'`** on n8n 2.10.x install. The previous package.json declared `n8n.nodes` and `n8n.credentials` as glob patterns (`dist/nodes/**/*.node.js`, `dist/credentials/**/*.credentials.js`). n8n's `PackageDirectoryLoader.loadAll()` does NOT expand globs — it iterates the array raw and feeds each entry to `directory-loader.ts:loadClass()`, which extracts the className via `path.parse(sourcePath).name.split('.')[0]`. For a glob entry like `dist/nodes/**/*.node.js`, that resolves to `className = "**"`, which is then interpolated into n8n's `vm.Script` template literal `new (require('${filePath}').${className})()`. V8 parses that source and throws `SyntaxError: Unexpected token '*'` BEFORE `require()` is ever called.
+  - `package.json`: replaced glob patterns with explicit file paths.
+  - Verified end-to-end: a faithful replica of `PackageDirectoryLoader → loadNodeFromFile → loadClass → loadClassInIsolation` passes 5/5 on v1.0.5 and fails with the exact user-reported error on v1.0.4.
+  - README troubleshooting section rewritten to reflect this root cause (the previous "stale install cache" hypothesis was incorrect).
+
+### Notes
+
+- No code or build-output changes in the per-node `.js` files — only the package.json `n8n` field. v1.0.4's CJS dist is reused as-is.
+
 ## [1.0.4] - 2026-08-27
 
 ### Added
