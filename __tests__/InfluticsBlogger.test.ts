@@ -29,11 +29,11 @@ function makeTrackCtx(overrides: Record<string, any> = {}) {
     return map[name];
   });
   ctx.helpers = {
-    // Mirror n8n's real `requestWithAuthentication` with `json: true`:
+    // Mirror n8n's real `httpRequestWithAuthentication` with `json: true`:
     //   - 2xx → returns the parsed JSON body directly
     //   - non-2xx → throws an Error whose `.response.body` holds the parsed error body
     // GenericFunctions.mapInfluticsError reads `rawError.response.body.error`.
-    requestWithAuthentication: vi.fn(async (_name, opts) => {
+    httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
       const res = await fetch((opts as any).uri ?? (opts as any).url, {
         method: (opts as any).method,
         headers: (opts as any).headers,
@@ -68,7 +68,7 @@ function makeQueryCtx(overrides: Record<string, any> = {}) {
     return map[name];
   });
   ctx.helpers = {
-    requestWithAuthentication: vi.fn(async (_name, opts) => {
+    httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
       let url = (opts as any).uri ?? (opts as any).url;
       const qs = (opts as any).qs;
       if (qs && typeof qs === 'object') {
@@ -111,7 +111,7 @@ function makePathCtx(overrides: Record<string, any> = {}) {
     return map[name];
   });
   ctx.helpers = {
-    requestWithAuthentication: vi.fn(async (_name, opts) => {
+    httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
       const res = await fetch((opts as any).uri ?? (opts as any).url, {
         method: (opts as any).method,
         headers: (opts as any).headers,
@@ -188,7 +188,7 @@ describe('InfluticsBlogger node — Track operation', () => {
     await expect(executeInfluticsBlogger.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       /Username is required/,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('rejects missing initialVideosCount with a NodeOperationError WITHOUT hitting the API', async () => {
@@ -203,7 +203,7 @@ describe('InfluticsBlogger node — Track operation', () => {
     await expect(executeInfluticsBlogger.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       /initial_videos_count/,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('clamps initial_videos_count to the backend hard cap of 500 when caller passes 9999', async () => {
@@ -224,7 +224,7 @@ describe('InfluticsBlogger node — Track operation', () => {
       });
 
     const out = await executeInfluticsBlogger.call(ctx as any, [{ json: {} }]);
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.body).toEqual({
       platform: 'tiktok',
       username: 'alice',
@@ -237,14 +237,14 @@ describe('InfluticsBlogger node — Track operation', () => {
     // Track is a single-batch op: one POST per workflow run regardless of how
     // many items the caller wired in. Mirrors the Track-videos pattern.
     const ctx = makeTrackCtx();
-    ctx.helpers.requestWithAuthentication = vi
+    ctx.helpers.httpRequestWithAuthentication = vi
       .fn()
       .mockResolvedValue({ success: true, data: { job_id: 'job-once', status: 'queued' } }) as any;
 
     const items = [{ json: {} }, { json: {} }, { json: {} }];
     const out = await executeInfluticsBlogger.call(ctx as any, items);
 
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(1);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(1);
     expect(out[0]).toEqual([
       { json: { success: true, data: { job_id: 'job-once', status: 'queued' } } },
     ]);
@@ -328,7 +328,7 @@ describe('InfluticsBlogger node — Get Job operation', () => {
     expect(out[0][0].json.data.result.blogger_id).toBe('blogger-1');
     // Backend reads no qs on /v1/bloggers/jobs/{job_id} — guard against
     // accidental drift that would put `?platform=...` or similar on the wire.
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toBeUndefined();
   });
 
@@ -343,7 +343,7 @@ describe('InfluticsBlogger node — Get Job operation', () => {
     await expect(executeInfluticsBlogger.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       /Job ID is required/,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('URL-encodes the jobId so slashes / slashes-in-ids never break routing', async () => {
@@ -461,7 +461,7 @@ describe('InfluticsBlogger node — By Username operation', () => {
 
     const out = await executeInfluticsBlogger.call(ctx as any, [{ json: {} }]);
     expect(out[0][0].json.data.blogger.channel_username).toBe('alice');
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     // Executor must NOT forward an empty `platform` string — let the backend
     // apply its own `tiktok` default.
     expect(callArgs.qs).toBeUndefined();
@@ -506,7 +506,7 @@ describe('InfluticsBlogger node — By Username operation', () => {
     await expect(executeInfluticsBlogger.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       /Username is required/,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('surfaces a 404 BLOGGER_NOT_TRACKED response to the caller', async () => {

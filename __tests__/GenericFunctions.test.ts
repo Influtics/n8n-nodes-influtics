@@ -57,11 +57,11 @@ describe('GenericFunctions', () => {
       ctx.getNode = vi.fn().mockReturnValue({ name: 'InfluticsVideo', type: 'n8n-nodes-influtics.influticsVideo', typeVersion: 1 } as any);
       ctx.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'test-key' });
       ctx.helpers = {
-        // Mirror n8n's real `requestWithAuthentication` with `json: true`:
+        // Mirror n8n's real `httpRequestWithAuthentication` with `json: true`:
         //   - 2xx → returns the parsed JSON body directly
         //   - non-2xx → throws an Error whose `.response.body` holds the parsed error body
         // The implementation reads `rawError.response.body.error` via mapInfluticsError.
-        requestWithAuthentication: vi.fn(async (_name, opts) => {
+        httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
           const res = await fetch((opts as any).uri ?? (opts as any).url, {
             method: (opts as any).method ?? 'GET',
             headers: (opts as any).headers,
@@ -105,7 +105,7 @@ describe('GenericFunctions', () => {
       ctx.getNode = vi.fn().mockReturnValue({ name: 'InfluticsVideo', type: 'n8n-nodes-influtics.influticsVideo', typeVersion: 1 } as any);
       ctx.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'test-key' });
       ctx.helpers = {
-        requestWithAuthentication: vi.fn(async (_name, opts) => {
+        httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
           const baseUrl = (opts as any).uri ?? (opts as any).url;
           const qs = (opts as any).qs
             ? '?' + new URLSearchParams((opts as any).qs as Record<string, string>).toString()

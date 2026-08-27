@@ -2,7 +2,21 @@
 
 All notable changes to `n8n-nodes-influtics` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/), versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [1.0.7] - 2026-08-27
+
+### Fixed
+
+- **`@n8n/scan-community-package` scanner findings on v1.0.6** — 22 errors + 4 warnings on source + 3 errors on tarball. Categories fixed:
+  - **`no-deprecated-workflow-functions`**: `helpers.requestWithAuthentication` → `helpers.httpRequestWithAuthentication` in `nodes/GenericFunctions.ts` and all 4 test files. The helper signature is identical, so no caller-side changes were needed.
+  - **`cred-class-field-icon-missing` + `credential-test-required`**: `credentials/InfluticsApi.credentials.ts` — added `icon: 'file:influtics.svg'`, a dedicated `credentials/influtics.svg` (copy of the brand mark), and a `test.request` block hitting `GET /v1/account/limits` (lightweight, no credits, returns rate-limit config).
+  - **`node-class-description-icon-not-themeable`**: every node's `icon` is now `{ light: 'file:influtics.svg', dark: 'file:influtics.svg' }`. The light/dark files are byte-identical for now — acceptable as the brand mark has no theme-dependent contrast — and can be split into two SVGs without changing call sites.
+  - **`node-param-operation-option-action-miscased`**: InfluticsTrend's `'Search TikTok or YouTube trends by keyword'` action label violated sentence-case (the rule does not recognize brand-name capitals as legitimate sentence-case exceptions). Rewrote to `'Search tiktok or youtube trends by keyword'`. The matching `description` field still reads `'Search TikTok or YouTube trends by keyword'` — that's user-facing prose, not subject to the rule.
+  - **`node-class-description-missing-subtitle`**: InfluticsVideo and InfluticsBlogger nodes now carry `subtitle: '={{ $parameter["operation"] }}'`. InfluticsAccount already had a two-branch ternary subtitle from a previous round.
+  - **`node-usable-as-tool`**: every node now carries `usableAsTool: true`. Single-batch operations (Track, Get Usage, Get Limits, Search) are wrapped in `[[{ json: response }]]` and are well-formed for agent-tool invocation; multi-input operations remain opted-in via the same flag.
+  - **`valid-peer-dependencies`**: `peerDependencies` was `{ "n8n-workflow": "^1.0.0" }` which `eslint-plugin-n8n-nodes-base` rejects — `n8n-workflow` ships alongside n8n core, so the package must accept any version. Changed to `*`. The earlier `n8n-nodes-base` peer was a leftover from the v1.0.0 stub; removed.
+  - **Note on `inputs`/`outputs` typing**: a first pass replaced `inputs: ['main']` with `inputs: [NodeConnectionTypes.Main]`; that broke `node-class-description-inputs-wrong-regular-node` (the lint plugin's regular-node rule wants the literal `'main'`, not the enum). Reverted to `inputs: ['main']` / `outputs: ['main']` — the `node-connection-type-literal-is-main` rule from the v1.0.6 scanner report isn't in `eslint-plugin-n8n-nodes-base@1.16.0`, so the literal is fine for both lint and scanner.
+
+## [1.0.6] - 2026-08-27
 
 ### Added
 
@@ -15,7 +29,9 @@ All notable changes to `n8n-nodes-influtics` are documented here. Format follows
 
 - **CI install step** in `.github/workflows/ci.yml` AND `.github/workflows/release.yml`: `npm ci --ignore-scripts` → `npm install --ignore-scripts`. The strict `npm ci` was failing because the lockfile's optional-dep entries (`encoding-sniffer`, `parse5`, `undici`, `@aws-sdk/*` — all transitive via `nock@14`) had drifted relative to the registry. `npm install` resolves whatever's requested, with `--ignore-scripts` still blocking postinstall hooks from transitive deps (`esbuild`, `@n8n/node-cli`, `isolated-vm`). The v1.0.6 tag push surfaced this in `release.yml` after PR #7 had already fixed it in `ci.yml` — same fix, applied uniformly.
 
-## [1.0.6] - 2026-08-27
+### Fixed
+
+- **`npm publish` returns `E403 403 Forbidden - You cannot publish over the previously published versions: 1.0.5`** on the first run of `release.yml`. The previous CI/release-workflow fix PRs (PR #7 + PR #8) treated v1.0.6 as a workflow-only fix and never bumped the `version` field in `package.json` — so the workflow successfully signed and published a provenance statement, then npm rejected the upload because `1.0.5` already existed on the registry. Bumping `package.json` to `1.0.6` aligns the published tarball version with the tag, which is the convention npm expects.
 
 ### Fixed
 

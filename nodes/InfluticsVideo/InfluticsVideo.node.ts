@@ -252,13 +252,15 @@ export class InfluticsVideo implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'Influtics Video',
     name: 'influticsVideo',
-    icon: 'file:influtics.svg',
+    icon: { light: 'file:influtics.svg', dark: 'file:influtics.svg' },
     group: ['transform'],
     version: 1,
+    subtitle: '={{ $parameter["operation"] }}',
     description: 'Track and read Influtics videos',
     defaults: { name: 'Influtics Video' },
     inputs: ['main'],
     outputs: ['main'],
+    usableAsTool: true,
     credentials: [{ name: 'influticsApi', required: true }],
     properties: [
       {

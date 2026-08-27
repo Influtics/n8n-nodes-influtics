@@ -59,7 +59,7 @@ export async function influticsApiRequest(
   };
 
   try {
-    const response = await this.helpers.requestWithAuthentication.call(
+    const response = await this.helpers.httpRequestWithAuthentication.call(
       this,
       CREDENTIAL_NAME,
       options,

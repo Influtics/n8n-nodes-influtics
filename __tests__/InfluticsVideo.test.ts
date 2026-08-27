@@ -30,13 +30,13 @@ describe('InfluticsVideo node — Track operation', () => {
       return map[name];
     });
     ctx.helpers = {
-      // Mirror n8n's real `requestWithAuthentication` with `json: true`:
+      // Mirror n8n's real `httpRequestWithAuthentication` with `json: true`:
       //   - 2xx → returns the parsed JSON body directly
       //   - non-2xx → throws an Error whose `.response.body` holds the parsed error body
       // GenericFunctions.mapInfluticsError reads `rawError.response.body.error`.
       // Falls back from `uri` → `url` because GenericFunctions uses `url` but some
       // n8n internals normalise to `uri`.
-      requestWithAuthentication: vi.fn(async (_name, opts) => {
+      httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
         const res = await fetch((opts as any).uri ?? (opts as any).url, {
           method: (opts as any).method,
           headers: (opts as any).headers,
@@ -104,13 +104,13 @@ describe('InfluticsVideo node — Track operation', () => {
       /Provide at least one video URL/,
     );
     // Critical assertion: an empty URL list must NEVER reach the API.
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('fires the Track API exactly ONCE per workflow run regardless of input item count', async () => {
     // Swap in a pure vi.fn().mockResolvedValue so we can assert call count
     // without hitting nock/fetch.
-    ctx.helpers.requestWithAuthentication = vi
+    ctx.helpers.httpRequestWithAuthentication = vi
       .fn()
       .mockResolvedValue({ success: true, data: { tracked: 3, skipped: 0 } }) as any;
 
@@ -118,7 +118,7 @@ describe('InfluticsVideo node — Track operation', () => {
     const items = [{ json: {} }, { json: {} }, { json: {} }];
     const out = await executeInfluticsVideo.call(ctx as any, items);
 
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(1);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(1);
     expect(out[0]).toEqual([{ json: { success: true, data: { tracked: 3, skipped: 0 } } }]);
   });
 
@@ -151,7 +151,7 @@ describe('InfluticsVideo node — Track operation', () => {
     await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       NodeOperationError,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 });
 
@@ -179,14 +179,14 @@ describe('InfluticsVideo node — Get Stats operation', () => {
       return map[name];
     });
     ctx.helpers = {
-      // Mirror n8n's real `requestWithAuthentication` with `json: true`:
+      // Mirror n8n's real `httpRequestWithAuthentication` with `json: true`:
       //   - 2xx → returns the parsed JSON body directly
       //   - non-2xx → throws an Error whose `.response.body` holds the parsed error body
       // Falls back from `uri` → `url` because GenericFunctions uses `url` but some
       // n8n internals normalise to `uri`. Serializes `qs` onto the URL so nock's
       // `.query(...)` matchers see the same path the production http helper would
       // hit (request lib does the same — append qs to URL).
-      requestWithAuthentication: vi.fn(async (_name, opts) => {
+      httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
         let url = (opts as any).uri ?? (opts as any).url;
         const qs = (opts as any).qs;
         if (qs && typeof qs === 'object') {
@@ -251,7 +251,7 @@ describe('InfluticsVideo node — Get Stats operation', () => {
     expect(out[0][0].json.data.data[0].views).toBe(12345);
     // Verify the executor's qs payload too — guards against silent drift where
     // the URL is right but the helper stops spreading it.
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toEqual({
       platform: 'tiktok',
       status: 'active',
@@ -315,9 +315,9 @@ describe('InfluticsVideo node — Get Stats operation', () => {
       { video_id: 'v2' },
       { video_id: 'v3' },
     ]);
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(2);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(2);
     // The second call must have advanced the offset (no cursor — offset walk).
-    const secondCallQs = (ctx.helpers.requestWithAuthentication as any).mock.calls[1][1].qs;
+    const secondCallQs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[1][1].qs;
     expect(secondCallQs.offset).toBe(2);
   });
 
@@ -359,7 +359,7 @@ describe('InfluticsVideo node — Get Stats operation', () => {
 
     const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
     expect(out[0][0].json.data.data[0].video_id).toBe('v1');
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(1);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(1);
   });
 
   it('clamps `limit` to the API hard cap of 100 when the caller passes 999', async () => {
@@ -397,7 +397,7 @@ describe('InfluticsVideo node — Get Stats operation', () => {
     // Single-call branch returns the raw envelope, so data.data is the items
     // array and is empty here.
     expect(out[0][0].json.data.data).toEqual([]);
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toEqual({ limit: 100 });
   });
 });
@@ -418,7 +418,7 @@ describe('InfluticsVideo node — Get By ID operation', () => {
     });
     ctx.helpers = {
       // Same shape as the Track describe block — no qs needed for getById.
-      requestWithAuthentication: vi.fn(async (_name, opts) => {
+      httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
         const res = await fetch((opts as any).uri ?? (opts as any).url, {
           method: (opts as any).method,
           headers: (opts as any).headers,
@@ -452,7 +452,7 @@ describe('InfluticsVideo node — Get By ID operation', () => {
     // Backend (handleGetVideoById) does NOT read any query params — guard
     // against accidental drift that would put `?platform=...` or similar
     // on the wire.
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toBeUndefined();
   });
 
@@ -468,7 +468,7 @@ describe('InfluticsVideo node — Get By ID operation', () => {
     await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       /Video ID is required/,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('surfaces a 404 VIDEO_NOT_FOUND response to the caller', async () => {
@@ -503,7 +503,7 @@ describe('InfluticsVideo node — Get By External ID operation', () => {
     ctx.helpers = {
       // Same shape as the Track describe block — qs not used by getByExternalId
       // (the backend queries by (organization_id, external_video_id) only).
-      requestWithAuthentication: vi.fn(async (_name, opts) => {
+      httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
         const res = await fetch((opts as any).uri ?? (opts as any).url, {
           method: (opts as any).method,
           headers: (opts as any).headers,
@@ -540,7 +540,7 @@ describe('InfluticsVideo node — Get By External ID operation', () => {
     expect(out[0][0].json.data.views).toBe(99);
     // Belt-and-braces: query string must be absent even though the UI
     // collected `platform=tiktok`.
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toBeUndefined();
   });
 
@@ -557,7 +557,7 @@ describe('InfluticsVideo node — Get By External ID operation', () => {
     await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       NodeOperationError,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('rejects missing platform with a NodeOperationError WITHOUT hitting the API', async () => {
@@ -575,7 +575,7 @@ describe('InfluticsVideo node — Get By External ID operation', () => {
     await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       NodeOperationError,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 });
 
@@ -606,7 +606,7 @@ describe('InfluticsVideo node — Update By External ID operation', () => {
     ctx.helpers = {
       // Same shape as the Track describe block — body is JSON-stringified so
       // nock's `.patch(path, body)` matcher can deep-equal the parsed JSON.
-      requestWithAuthentication: vi.fn(async (_name, opts) => {
+      httpRequestWithAuthentication: vi.fn(async (_name, opts) => {
         const res = await fetch((opts as any).uri ?? (opts as any).url, {
           method: (opts as any).method,
           headers: (opts as any).headers,
@@ -661,7 +661,7 @@ describe('InfluticsVideo node — Update By External ID operation', () => {
       'tags',
     ]);
     // Backend does not read platform — guard against accidental qs.
-    const callArgs = (ctx.helpers.requestWithAuthentication as any).mock.calls[0][1];
+    const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
     expect(callArgs.qs).toBeUndefined();
   });
 
@@ -764,7 +764,7 @@ describe('InfluticsVideo node — Update By External ID operation', () => {
     await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       /Provide at least one update field/,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('rejects empty externalId with a NodeOperationError WITHOUT hitting the API', async () => {
@@ -781,7 +781,7 @@ describe('InfluticsVideo node — Update By External ID operation', () => {
     await expect(executeInfluticsVideo.call(ctx as any, [{ json: {} }])).rejects.toThrow(
       NodeOperationError,
     );
-    expect((ctx.helpers.requestWithAuthentication as any).mock.calls.length).toBe(0);
+    expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
 
   it('surfaces a 404 VIDEO_NOT_FOUND response to the caller', async () => {
