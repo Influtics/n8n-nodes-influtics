@@ -2,6 +2,19 @@
 
 All notable changes to `n8n-nodes-influtics` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/), versioning follows [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **`repository`, `bugs`, `homepage`** fields on `package.json` so the npm page surfaces the source repo and issue tracker.
+- **About Influtics** section in `README.md` — context for the verified-nodes reviewer.
+- **`.github/workflows/release.yml`** — tag-driven publish job with `npm publish --provenance` (mandatory for verified-nodes review since 2026-05-01). Requires `NPM_TOKEN` to be configured in repo secrets before the first tagged release.
+- **`@n8n/scan-community-package`** wired into `.github/workflows/ci.yml` as an advisory check — runs on every push to `main` and on every PR. Marked `continue-on-error` so it surfaces drift without blocking merges (provenance lands only after the first tagged release through `release.yml`).
+
+### Changed
+
+- **CI install step** in `.github/workflows/ci.yml`: `npm ci --ignore-scripts` → `npm install --ignore-scripts`. The strict `npm ci` was failing on this branch because the lockfile's optional-dep entries (`encoding-sniffer`, `parse5`, `undici`, `@aws-sdk/*` — all transitive via `nock@14`) had drifted relative to the registry. `npm install` resolves whatever's requested, with `--ignore-scripts` still blocking postinstall hooks from transitive deps (`esbuild`, `@n8n/node-cli`, `isolated-vm`).
+
 ## [1.0.5] - 2026-08-27
 
 ### Fixed
