@@ -45,7 +45,7 @@ import {
   type INodeType,
   type INodeTypeDescription,
 } from 'n8n-workflow';
-import { influticsApiRequest } from '../GenericFunctions.js';
+import { influticsApiRequest } from '../GenericFunctions';
 
 // Per-operation handler map. Track is a single batch op; one call per workflow
 // run regardless of input item count. By Username / Get Job are also single-

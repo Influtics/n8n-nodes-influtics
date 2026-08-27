@@ -2,6 +2,16 @@
 
 All notable changes to `n8n-nodes-influtics` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/), versioning follows [SemVer](https://semver.org/).
 
+## [1.0.3] - 2026-08-27
+
+### Fixed
+
+- Switched the package from ESM to CommonJS. n8n 2.10.4 loads community nodes via `loadClassInIsolation`, which compiles `new (require('<file>').ClassName)()` with V8 in script mode inside a `vm.Script` context. With `"type": "module"` and TypeScript `module: "NodeNext"`, the published `dist/index.js` was ESM and required Node 24's `require(esm)` interop to load `n8n-workflow`. That interop routed `import 'n8n-workflow'` to `n8n-workflow@1.120.x`'s `dist/esm/index.js`, which contains `import * as X from './X'` statements (no `.js` extension) that V8 rejects in script mode with `Unexpected token '*'`. Reverting to CJS means `require('n8n-workflow')` resolves via the `require` condition to `dist/cjs/index.js` (valid CJS) — no `vm.Script`/`require(esm)` indirection.
+  - `package.json`: removed `"type": "module"`.
+  - `tsconfig.json`: `module: "NodeNext"` → `"CommonJS"`, `moduleResolution: "NodeNext"` → `"Node"`.
+  - `index.ts` and the four node files: dropped the `.js` import suffixes (TS + CJS don't need them).
+  - Build output verified: `dist/index.js` now emits `"use strict"; Object.defineProperty(exports, "__esModule", ...)` + `require(...)`, loadable through n8n's `vm.Script` sandbox.
+
 ## [1.0.2] - 2026-08-27
 
 ### Fixed

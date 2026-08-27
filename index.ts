@@ -10,8 +10,8 @@
  * Per the official `@n8n/node-cli` template (`npx n8n-node new`).
  */
 
-export { InfluticsApi } from './credentials/InfluticsApi.credentials.js';
-export { InfluticsVideo } from './nodes/InfluticsVideo/InfluticsVideo.node.js';
-export { InfluticsBlogger } from './nodes/InfluticsBlogger/InfluticsBlogger.node.js';
-export { InfluticsTrend } from './nodes/InfluticsTrend/InfluticsTrend.node.js';
-export { InfluticsAccount } from './nodes/InfluticsAccount/InfluticsAccount.node.js';
+export { InfluticsApi } from './credentials/InfluticsApi.credentials';
+export { InfluticsVideo } from './nodes/InfluticsVideo/InfluticsVideo.node';
+export { InfluticsBlogger } from './nodes/InfluticsBlogger/InfluticsBlogger.node';
+export { InfluticsTrend } from './nodes/InfluticsTrend/InfluticsTrend.node';
+export { InfluticsAccount } from './nodes/InfluticsAccount/InfluticsAccount.node';
