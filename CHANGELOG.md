@@ -13,7 +13,7 @@ All notable changes to `n8n-nodes-influtics` are documented here. Format follows
 
 ### Changed
 
-- **CI install step** in `.github/workflows/ci.yml`: `npm ci --ignore-scripts` → `npm install --ignore-scripts`. The strict `npm ci` was failing on this branch because the lockfile's optional-dep entries (`encoding-sniffer`, `parse5`, `undici`, `@aws-sdk/*` — all transitive via `nock@14`) had drifted relative to the registry. `npm install` resolves whatever's requested, with `--ignore-scripts` still blocking postinstall hooks from transitive deps (`esbuild`, `@n8n/node-cli`, `isolated-vm`).
+- **CI install step** in `.github/workflows/ci.yml` AND `.github/workflows/release.yml`: `npm ci --ignore-scripts` → `npm install --ignore-scripts`. The strict `npm ci` was failing because the lockfile's optional-dep entries (`encoding-sniffer`, `parse5`, `undici`, `@aws-sdk/*` — all transitive via `nock@14`) had drifted relative to the registry. `npm install` resolves whatever's requested, with `--ignore-scripts` still blocking postinstall hooks from transitive deps (`esbuild`, `@n8n/node-cli`, `isolated-vm`). The v1.0.6 tag push surfaced this in `release.yml` after PR #7 had already fixed it in `ci.yml` — same fix, applied uniformly.
 
 ## [1.0.5] - 2026-08-27
 
