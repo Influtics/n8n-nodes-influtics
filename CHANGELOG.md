@@ -15,6 +15,12 @@ All notable changes to `n8n-nodes-influtics` are documented here. Format follows
 
 - **CI install step** in `.github/workflows/ci.yml` AND `.github/workflows/release.yml`: `npm ci --ignore-scripts` → `npm install --ignore-scripts`. The strict `npm ci` was failing because the lockfile's optional-dep entries (`encoding-sniffer`, `parse5`, `undici`, `@aws-sdk/*` — all transitive via `nock@14`) had drifted relative to the registry. `npm install` resolves whatever's requested, with `--ignore-scripts` still blocking postinstall hooks from transitive deps (`esbuild`, `@n8n/node-cli`, `isolated-vm`). The v1.0.6 tag push surfaced this in `release.yml` after PR #7 had already fixed it in `ci.yml` — same fix, applied uniformly.
 
+## [1.0.6] - 2026-08-27
+
+### Fixed
+
+- **`npm publish` returns `E403 403 Forbidden - You cannot publish over the previously published versions: 1.0.5`** on the first run of `release.yml`. The previous CI/release-workflow fix PRs (PR #7 + PR #8) treated v1.0.6 as a workflow-only fix and never bumped the `version` field in `package.json` — so the workflow successfully signed and published a provenance statement, then npm rejected the upload because `1.0.5` already existed on the registry. Bumping `package.json` to `1.0.6` aligns the published tarball version with the tag, which is the convention npm expects.
+
 ## [1.0.5] - 2026-08-27
 
 ### Fixed
