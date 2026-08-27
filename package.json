@@ -18,6 +18,14 @@
   "license": "MIT",
   "main": "dist/index.js",
   "files": ["dist"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Influtics/n8n-nodes-influtics.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Influtics/n8n-nodes-influtics/issues"
+  },
+  "homepage": "https://github.com/Influtics/n8n-nodes-influtics#readme",
   "scripts": {
     "prepublishOnly": "npm run build && npm run lint && npm test",
     "build": "n8n-node build",
@@ -26,7 +34,8 @@
     "lintfix": "eslint . --ext .ts --fix",
     "format": "prettier --write .",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "scan:package": "npx --yes @n8n/scan-community-package n8n-nodes-influtics"
   },
   "engines": {
     "node": ">=20.0.0"

@@ -2,6 +2,15 @@
 
 All notable changes to `n8n-nodes-influtics` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/), versioning follows [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **`repository`, `bugs`, `homepage`** fields on `package.json` so the npm page surfaces the source repo and issue tracker.
+- **About Influtics** section in `README.md` — context for the verified-nodes reviewer.
+- **`.github/workflows/release.yml`** — tag-driven publish job with `npm publish --provenance` (mandatory for verified-nodes review since 2026-05-01). Requires `NPM_TOKEN` to be configured in repo secrets before the first tagged release.
+- **`@n8n/scan-community-package`** wired into `.github/workflows/ci.yml` as a required check — runs on every push to `main` and on every PR.
+
 ## [1.0.5] - 2026-08-27
 
 ### Fixed

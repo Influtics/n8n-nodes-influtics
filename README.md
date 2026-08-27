@@ -2,6 +2,10 @@
 
 Official [Influtics](https://influtics.com) integration for [n8n](https://n8n.io) — track influencer videos, bloggers, and trends across TikTok, Instagram, YouTube, VK, and more.
 
+## About Influtics
+
+Influtics is a paid influencer-marketing platform that monitors creators and their videos across TikTok, Instagram, YouTube, VK, and other channels. This node wraps the public Influtics REST API — every endpoint listed under [docs.influtics.com](https://docs.influtics.com/) is reachable from n8n workflows. Use it to: track new campaign videos, pull daily performance metrics into Notion / Sheets, fire alerts on viral spikes, or sync creator rosters across tools.
+
 ## Install
 
 1. In n8n, open **Settings → Community Nodes**.

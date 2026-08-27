@@ -15,3 +15,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - name: n8n community-node security scan
+        # Scans the latest published version on npm. Catches regressions in
+        # the live package against the same ESLint ruleset the n8n
+        # verified-nodes reviewer runs.
+        run: npx --yes @n8n/scan-community-package n8n-nodes-influtics
