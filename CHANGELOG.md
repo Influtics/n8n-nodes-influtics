@@ -2,6 +2,16 @@
 
 All notable changes to `n8n-nodes-influtics` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/), versioning follows [SemVer](https://semver.org/).
 
+## [1.0.4] - 2026-08-27
+
+### Added
+
+- **Troubleshooting** section in `README.md` covering `Error loading package: Unexpected token '*'` — the dominant user-facing error after upgrade. n8n's community-node installer reuses the on-disk folder between upgrades, so a broken prior version (≤1.0.2) leaves broken files in place even after installing v1.0.3. The new section gives Docker-volume and bare-metal steps to wipe the install cache and reinstall cleanly.
+
+### Notes
+
+- No code changes in this release. v1.0.3 is verifiably clean (CommonJS, no ESM imports that V8 script mode rejects); the `loadClassInIsolation` smoketest against `npm pack` output passes 5/5 on Node 23 and Node 24, with both `n8n-workflow@1.120.0` and `@1.120.28`.
+
 ## [1.0.3] - 2026-08-27
 
 ### Fixed
