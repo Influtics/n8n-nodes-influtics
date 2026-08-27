@@ -15,7 +15,13 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
-      - run: npm ci --ignore-scripts
+      # `npm install` (not `npm ci`) — same rationale as ci.yml: the
+      # lockfile's optional-dep entries drift over time as transitive
+      # deps (nock@14 → undici, parse5, @aws-sdk/*) update on the
+      # registry. `--ignore-scripts` keeps postinstall hooks disabled
+      # for transitive deps that have them (esbuild, @n8n/node-cli,
+      # isolated-vm, ssh2).
+      - run: npm install --ignore-scripts
       - run: npm run lint
       - run: npm test
       - run: npm run build
