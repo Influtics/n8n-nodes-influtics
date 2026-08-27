@@ -57,9 +57,17 @@ The **Track** operation is async; pair it with **Get Job** using the expression 
 
 ## Troubleshooting
 
-### `Error loading package: Unexpected token '*'` after upgrading
+### `Error loading package: Unexpected token '*'` on install
 
-The error almost always means a **stale install cache**, not a packaging bug. n8n's community-node installer (`CommunityPackagesController`) reuses the on-disk folder between upgrades; if the previous version was broken (≤1.0.2), the broken files stay in place and the new install layer lands on top of them. v1.0.3+ is verifiably clean (CommonJS, no ESM imports that V8 script mode would reject) — confirmed by `npm pack` + `tar -xzf` + `loadClassInIsolation` against the published tarball on Node 24.
+This error originates inside n8n (`loadClassInIsolation`), not in your environment. It means n8n's `PackageDirectoryLoader` failed to load one of the node entry-point files declared in `package.json`'s `n8n` field.
+
+**If you're on v1.0.5 or later:** the published `package.json` declares explicit relative paths in `n8n.nodes` and `n8n.credentials`. If you still see this error, n8n is loading a stale on-disk install left behind by an earlier (≤ v1.0.4) version — wipe the install cache and reinstall (steps below).
+
+**If you're on v1.0.4 or earlier:** the package.json declared glob patterns (`dist/nodes/**/*.node.js`). n8n's `PackageDirectoryLoader.loadAll()` does NOT expand globs — it treats them as literal file paths, and `directory-loader.ts:loadClass` extracts the className via `path.parse(sourcePath).name.split('.')[0]`, which yields the string `"**"`. n8n then interpolates that into its `vm.Script` template `new (require('${filePath}').${className})()` and V8 throws `SyntaxError: Unexpected token '*'` at parse time. **Upgrade to v1.0.5** — no other workaround exists on the package side.
+
+#### Wipe the install cache (v1.0.5+ still seeing the error)
+
+n8n's community-node installer (`CommunityPackagesController`) reuses the on-disk folder between upgrades. If a previous install left broken files behind, the new install lands on top of them.
 
 **Self-hosted (Docker):**
 
@@ -81,9 +89,11 @@ sudo systemctl start n8n
 # Reinstall via Settings → Community Nodes → Install a community node.
 ```
 
-**Confirm the install succeeded** — open a workflow, add a node, search for `Influtics`. All four should appear: **Influtics Video**, **Influtics Blogger**, **Influtics Trend**, **Influtics Account**.
+#### Confirm the install succeeded
 
-If they still don't appear, capture the install log from `Settings → Community Nodes → click the package → View error log` and open an issue at https://github.com/Influtics/n8n-nodes-influtics/issues with the log attached.
+Open a workflow, add a node, search for `Influtics`. All four should appear: **Influtics Video**, **Influtics Blogger**, **Influtics Trend**, **Influtics Account**.
+
+If they still don't appear, capture the install log from **Settings → Community Nodes → click the package → View error log** and open an issue at https://github.com/Influtics/n8n-nodes-influtics/issues with the log attached.
 
 ## Documentation
 
