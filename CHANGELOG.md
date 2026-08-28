@@ -2,6 +2,20 @@
 
 All notable changes to `n8n-nodes-influtics` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/), versioning follows [SemVer](https://semver.org/).
 
+## [1.0.10] - 2026-08-28
+
+### Changed
+
+- **`credentials/InfluticsApi.credentials.ts` aligned with n8n starter-kit canonical pattern** — the n8n Creator Portal reviewer flagged v1.0.9 as "Missing credential test" / deviant from the starter credential template. The test block was already present in v1.0.9, but it diverged from [`credentials/GithubIssuesApi.credentials.ts`](https://github.com/n8n-io/n8n-nodes-starter/blob/master/credentials/GithubIssuesApi.credentials.ts) in three starter-mandatory ways:
+  - `icon` is now `icon: Icon = { light: 'file:influtics.svg', dark: 'file:influtics.dark.svg' }` instead of `icon = 'file:influtics.svg' as const`. The previous single-file form was a string `Literal` and triggered `@n8n/community-nodes/icon-prefer-themed-variants` at `warn` severity (warns don't fail the gate but surface in the reviewer-facing scan output). Added `credentials/influtics.dark.svg` (byte-identical to `influtics.svg` — the brand mark is theme-independent, but the rule wants two distinct assets so a future dark variant can land without changing call sites, mirroring the same split already done for nodes in v1.0.9).
+  - `authenticate` is now `authenticate: IAuthenticateGeneric = {...}` with explicit type annotation, dropping the `as const` assertion. The annotation matches the starter template verbatim.
+  - `test` is now `test: ICredentialTestRequest = {...}` with explicit type annotation, dropping the `as const` on `method`. The annotation matches the starter template verbatim. The endpoint (`GET /v1/account/limits`) and behavior are unchanged from v1.0.9.
+
+### Notes
+
+- The functional contract is unchanged: the credential still accepts a single Bearer API key, and the test still hits `GET /v1/account/limits` (lightweight, no credits, returns rate-limit config) — only the surface syntax shifts to match the starter.
+- Source-level scan confirms both `@n8n/community-nodes/icon-prefer-themed-variants` (was `warn`) and `@n8n/community-nodes/credential-test-required` (already passing) now satisfy the starter-pattern expectation; no other rules fire.
+
 ## [1.0.9] - 2026-08-28
 
 ### Fixed
