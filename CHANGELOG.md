@@ -2,6 +2,12 @@
 
 All notable changes to `n8n-nodes-influtics` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/), versioning follows [SemVer](https://semver.org/).
 
+## [1.0.8] - 2026-08-28
+
+### Changed
+
+- **`package.json` `author.email`**: `team@influtics.com` → `topivanabramov@gmail.com`. The n8n Creator Portal reads the verification-token destination from this field (NOT the npm account maintainer email — confirmed empirically: the personal npm account owns the package but the field drives the token). Routing the token to the maintainer's personal inbox keeps the verified-nodes review thread under the same hands that ship the package. No code change. **Note:** this only takes effect on the next npm publish; v1.0.6 still has `team@influtics.com` and the token for that publish was sent there.
+
 ## [1.0.7] - 2026-08-27
 
 ### Fixed
