@@ -27,6 +27,7 @@
  *             429 RATE_LIMITED.
  */
 import {
+  NodeConnectionTypes,
   NodeOperationError,
   type IDataObject,
   type IExecuteFunctions,
@@ -141,14 +142,16 @@ export class InfluticsTrend implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'Influtics Trend',
     name: 'influticsTrend',
-    icon: { light: 'file:influtics.svg', dark: 'file:influtics.svg' },
+    icon: { light: 'file:influtics-light.svg', dark: 'file:influtics-dark.svg' },
     group: ['transform'],
     version: 1,
     subtitle: '={{ $parameter["operation"] }}',
     description: 'Search Influtics trends by keyword',
     defaults: { name: 'Influtics Trend' },
-    inputs: ['main'],
-    outputs: ['main'],
+    // eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node -- scanner `@n8n/community-nodes/node-connection-type-literal` requires the enum; the local plugin (1.16.0) wants the literal and is stale against newer n8n-workflow APIs.
+    inputs: [NodeConnectionTypes.Main],
+    // eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong -- scanner requires the enum (see inputs comment above); satisfying it is what blocks v1.0.9 ship.
+    outputs: [NodeConnectionTypes.Main],
     usableAsTool: true,
     credentials: [{ name: 'influticsApi', required: true }],
     properties: [
