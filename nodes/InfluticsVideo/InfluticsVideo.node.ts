@@ -18,8 +18,9 @@ import {
   type INodeExecutionData,
   type INodeType,
   type INodeTypeDescription,
+  type INodePropertyOptions,
 } from 'n8n-workflow';
-import { influticsApiRequest } from '../GenericFunctions';
+import { influticsApiRequest, VIDEO_PLATFORMS } from '../GenericFunctions';
 
 // Per-operation handler map. Track is a single batch op; one call per workflow
 // run regardless of input item count. Future operations (Tasks 6/7) add a key
@@ -349,12 +350,12 @@ export class InfluticsVideo implements INodeType {
         name: 'platform',
         type: 'options',
         displayOptions: { show: { operation: ['getStats'] } },
-        options: [
-          { name: 'TikTok', value: 'tiktok' },
-          { name: 'Instagram', value: 'instagram' },
-          { name: 'YouTube', value: 'youtube' },
-          { name: 'VK', value: 'vk' },
-        ],
+        // The video-tracking surface supports all 9 platforms (see
+        // VIDEO_PLATFORMS in GenericFunctions). Creator tracking is a strict
+        // subset of 4 (tiktok/instagram/youtube/vk) — the InfluticsBlogger
+        // node keeps that narrower list. Sharing the constant keeps the two
+        // surfaces in sync if a platform is added/removed.
+        options: VIDEO_PLATFORMS as unknown as INodePropertyOptions[],
         default: 'tiktok',
         description: 'Filter by a single platform',
       },
@@ -424,12 +425,14 @@ export class InfluticsVideo implements INodeType {
         name: 'platform',
         type: 'options',
         displayOptions: { show: { operation: ['getByExternalId', 'updateByExternalId'] } },
-        options: [
-          { name: 'TikTok', value: 'tiktok' },
-          { name: 'Instagram', value: 'instagram' },
-          { name: 'YouTube', value: 'youtube' },
-          { name: 'VK', value: 'vk' },
-        ],
+        // The Influtics API scopes `videos.by-external-id` lookups by the
+        // (organization_id, external_video_id) unique index and IGNORES the
+        // `platform` query/body param server-side — see api-worker CLAUDE.md
+        // "Video single-resource lookup". We keep the dropdown required for
+        // symmetry with the v1.0.10 UI (and so callers can't omit it by
+        // accident), but its value is forwarded only to drive that lookup,
+        // not as a server-side filter. All 9 platforms are accepted.
+        options: VIDEO_PLATFORMS as unknown as INodePropertyOptions[],
         default: 'tiktok',
         required: true,
       },
