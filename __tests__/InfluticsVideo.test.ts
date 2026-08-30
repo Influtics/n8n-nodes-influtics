@@ -362,6 +362,49 @@ describe('InfluticsVideo node — Get Stats operation', () => {
     expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(1);
   });
 
+  // v1.0.11 widened the getStats `platform` dropdown from 4 (tiktok/instagram/
+  // youtube/vk) to all 9 platforms the Influtics video-tracking surface accepts.
+  // Each new platform must round-trip the same way the existing tiktok test does:
+  // the chosen value flows through `qs.platform` exactly as typed, and the API
+  // envelope comes back untouched. These tests fail loud if a future refactor
+  // drops a platform from VIDEO_PLATFORMS or routes a platform through qs
+  // with a different key.
+  const newPlatforms = ['pinterest', 'threads', 'telegram', 'ok', 'dzen'] as const;
+  for (const platform of newPlatforms) {
+    it(`forwards platform=${platform} as qs.platform to /v1/videos/stats`, async () => {
+      ctx.getNodeParameter = vi.fn((name: string) => {
+        const map: Record<string, any> = {
+          operation: 'getStats',
+          platform,
+          status: '',
+          blogger_username: '',
+          sort: '',
+          order: '',
+          returnAll: false,
+          limit: 50,
+        };
+        return map[name];
+      });
+
+      nock(BASE_URL)
+        .get('/v1/videos/stats')
+        .query((actual: Record<string, unknown>) => actual.platform === platform)
+        .reply(200, {
+          success: true,
+          data: {
+            data: [{ video_id: `v-${platform}` }],
+            pagination: { total: 1, limit: 50, offset: 0, has_more: false },
+          },
+          meta: {},
+        });
+
+      const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+      expect(out[0][0].json.data.data[0].video_id).toBe(`v-${platform}`);
+      const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
+      expect(callArgs.qs.platform).toBe(platform);
+    });
+  }
+
   it('clamps `limit` to the API hard cap of 100 when the caller passes 999', async () => {
     // Simulates "user typed 999": the executor's defensive Math.min(limit, 100)
     // must clamp before forwarding. The UI's `typeOptions.maxValue = 100`
@@ -577,6 +620,48 @@ describe('InfluticsVideo node — Get By External ID operation', () => {
     );
     expect((ctx.helpers.httpRequestWithAuthentication as any).mock.calls.length).toBe(0);
   });
+
+  // v1.0.11 widened the `platform` dropdown on getByExternalId / updateByExternalId
+  // to all 9 platforms. The backend still scopes these lookups by the
+  // (organization_id, external_video_id) unique index and IGNORES the `platform`
+  // field — see InfluticsVideo.node.ts:140-149 (the by-external-id comment block).
+  // This locks the invariant in for every supported platform: no qs leak, no body
+  // leak, regardless of which dropdown value the caller picked.
+  const allPlatforms = [
+    'dzen',
+    'instagram',
+    'ok',
+    'pinterest',
+    'telegram',
+    'threads',
+    'tiktok',
+    'vk',
+    'youtube',
+  ] as const;
+  for (const platform of allPlatforms) {
+    it(`does NOT forward platform=${platform} on /v1/videos/by-external-id (backend ignores it)`, async () => {
+      ctx.getNodeParameter = vi.fn((name: string) => {
+        const map: Record<string, any> = {
+          operation: 'getByExternalId',
+          externalId: 'ext-1',
+          platform,
+        };
+        return map[name];
+      });
+
+      nock(BASE_URL)
+        .get('/v1/videos/by-external-id/ext-1')
+        .reply(200, { success: true, data: { external_id: 'ext-1', views: 1 } });
+
+      await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+      const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
+      expect(callArgs.qs).toBeUndefined();
+      expect(callArgs.body).toBeUndefined();
+      // Belt-and-braces: the URL nock matched must NOT contain `?platform=`.
+      // nock would have 404'd the matcher if it did, but assert explicitly.
+      expect(callArgs.url).not.toMatch(/[?&]platform=/);
+    });
+  }
 });
 
 describe('InfluticsVideo node — Update By External ID operation', () => {
@@ -793,4 +878,48 @@ describe('InfluticsVideo node — Update By External ID operation', () => {
       /VIDEO_NOT_FOUND/,
     );
   });
+
+  // v1.0.11 mirrored the getByExternalId widening on updateByExternalId: all 9
+  // platforms accepted by the dropdown, but the PATCH body still never carries
+  // a `platform` field (backend ignores it). Each iteration uses a unique
+  // externalId so the per-platform nock interceptors don't collide.
+  const allPlatforms = [
+    'dzen',
+    'instagram',
+    'ok',
+    'pinterest',
+    'telegram',
+    'threads',
+    'tiktok',
+    'vk',
+    'youtube',
+  ] as const;
+  for (const platform of allPlatforms) {
+    it(`does NOT forward platform=${platform} on PATCH /v1/videos/by-external-id`, async () => {
+      const ext = `ext-${platform}`;
+      ctx.getNodeParameter = vi.fn((name: string) => {
+        const map: Record<string, any> = {
+          operation: 'updateByExternalId',
+          externalId: ext,
+          platform,
+          updateFields: { notes: 'just notes', campaign: '', status: '', tags: [] },
+        };
+        return map[name];
+      });
+
+      nock(BASE_URL)
+        .patch(`/v1/videos/by-external-id/${ext}`, { notes: 'just notes' })
+        .reply(200, {
+          success: true,
+          data: { video_id: ext, external_video_id: ext, updated_fields: ['notes'] },
+        });
+
+      const out = await executeInfluticsVideo.call(ctx as any, [{ json: {} }]);
+      expect(out[0][0].json.success).toBe(true);
+      const callArgs = (ctx.helpers.httpRequestWithAuthentication as any).mock.calls[0][1];
+      expect(callArgs.qs).toBeUndefined();
+      expect(callArgs.body).not.toHaveProperty('platform');
+      expect(callArgs.url).not.toMatch(/[?&]platform=/);
+    });
+  }
 });

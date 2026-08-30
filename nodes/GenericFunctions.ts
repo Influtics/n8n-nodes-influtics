@@ -1,8 +1,42 @@
-import type { IExecuteFunctions, IDataObject, IHttpRequestOptions } from 'n8n-workflow';
+import type {
+  IExecuteFunctions,
+  IDataObject,
+  IHttpRequestOptions,
+  INodePropertyOptions,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export const INFLUTICS_API_BASE_URL = 'https://api.influtics.com';
 export const CREDENTIAL_NAME = 'influticsApi';
+
+/**
+ * Platforms the Influtics video-tracking endpoints (`/v1/videos/track`,
+ * `/v1/videos/stats`, `/v1/videos/by-external-id/*`) accept.
+ *
+ * The 4-platform creator-tracking surface (`/v1/bloggers/track`) is a strict
+ * SUBSET of this list — only TikTok / Instagram / YouTube / VK have ongoing
+ * creator-scraper coverage. Video tracking is lighter: any URL on any of the
+ * 9 supported platforms can be resolved and snapshotted, so the dropdown
+ * exposes the full set here while `InfluticsBlogger` keeps the 4-platform list.
+ *
+ * Single source of truth — the `InfluticsVideo` node imports this constant
+ * instead of duplicating the option list per parameter, so adding/removing a
+ * platform only touches this one declaration.
+ *
+ * Order matches the landing-page platform order in /llms.txt (Instagram …
+ * Dzen). Keep alphabetical.
+ */
+export const VIDEO_PLATFORMS: ReadonlyArray<INodePropertyOptions> = [
+  { name: 'Dzen', value: 'dzen' },
+  { name: 'Instagram', value: 'instagram' },
+  { name: 'OK', value: 'ok' },
+  { name: 'Pinterest', value: 'pinterest' },
+  { name: 'Telegram', value: 'telegram' },
+  { name: 'Threads', value: 'threads' },
+  { name: 'TikTok', value: 'tiktok' },
+  { name: 'VK', value: 'vk' },
+  { name: 'YouTube', value: 'youtube' },
+];
 
 interface ApiErrorBody {
   success?: false;
