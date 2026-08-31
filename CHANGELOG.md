@@ -2,16 +2,51 @@
 
 All notable changes to `n8n-nodes-influtics` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/), versioning follows [SemVer](https://semver.org/).
 
+## [1.1.0] - 2026-08-31
+
+### ⚠️ BREAKING — package consolidated to a single action node
+
+The four separate nodes (`Influtics Account`, `Influtics Blogger`, `Influtics Trend`,
+`Influtics Video`) have been merged into a single **`Influtics`** action node, with each
+surface exposed as a **Resource** (Account / Blogger / Trend / Video) and each operation
+under it.
+
+This change is required by [n8n's verified-nodes guidelines][vg] ("one regular node per
+package") and follows the pattern used by HubSpot, Notion, Airtable, etc.
+
+[vg]: https://docs.n8n.io/connect/create-nodes/build-your-node/reference/verification-guidelines#node-types
+
+#### Action required for existing workflows
+
+**Workflows that reference the old node types will fail to load after upgrading.** n8n
+does not auto-rename community-node types, so each affected node must be re-created:
+
+1. Open the workflow in the n8n canvas.
+2. Delete the old node (e.g. `Influtics Video`).
+3. Drop a new `Influtics` node onto the canvas and re-wire it.
+4. Pick the matching **Resource** (Video / Blogger / Trend / Account) + the same
+   **Operation** as before.
+5. Save the workflow.
+
+Parameter names and operation values are unchanged — once the new node is dropped and the
+old one deleted, all parameters are recognisable.
+
+#### Other changes
+- Node icon and credential unchanged.
+- All backend endpoints, request bodies, and rate limits unchanged.
+- ESLint-clean, vitest green, `n8n-node build` produces a 1-node `dist/`.
+- `@n8n/scan-community-package` passes locally.
+
 ## [1.0.11] - 2026-08-29
 
 ### Added
 
-- **All 9 supported platforms exposed on `InfluticsVideo` dropdowns** — the `Platform` parameter on `Get Stats`, `Get By External ID`, and `Update By External ID` previously listed only 4 platforms (TikTok / Instagram / YouTube / VK). It now lists all 9 the Influtics video-tracking surface accepts: **Dzen, Instagram, OK, Pinterest, Telegram, Threads, TikTok, VK, YouTube**. The 9-platform list lives in `nodes/GenericFunctions.ts` as a new exported `VIDEO_PLATFORMS: ReadonlyArray<INodePropertyOptions>` constant — single source of truth, imported by both dropdowns so adding/removing a platform touches one declaration.
+- **All 9 supported platforms exposed on `InfluticsVideo` dropdowns** — the `Platform` parameter on `Get Stats`, `Get By External ID`, and `Update By External ID` previously listed only 4 platforms (TikTok / Instagram / YouTube / VK). It now lists all 9 the Influtics video-tracking surface accepts: **Dzen, Instagram, OK, Pinterest, Telegram, Threads, TikTok, VK, YouTube**. The 9-platform list lives in `nodes/GenericFunctions.ts` as a new exported `VIDEO_PLATFORMS: ReadonlyArray<INodePropertyOptions>` constant — single source of truth, imported by both dropdowns so adding/removing a platform touches one declaration. In v1.1.0 this list is consumed by the new single `Influtics` node's `Video` resource; the legacy `InfluticsVideo.node.ts` that this PR originally modified has been removed in v1.1.0's consolidation.
 - **README "Supported platforms" section** — documents the 4-vs-9 asymmetry honestly: `InfluticsVideo` accepts all 9, `InfluticsBlogger` is locked to the 4 creator-coverage platforms (TikTok / Instagram / YouTube / VK) because that's where Influtics has ongoing creator-scraper coverage.
 
 ### Tests
 
-- **`__tests__/InfluticsVideo.test.ts`** — added 23 new tests:
+- **`__tests__/InfluticsVideo.test.ts`** — added 23 new tests (file removed in v1.1.0's consolidation; the platform-coverage invariants are preserved by `nodes/Influtics/__tests__/resources/video.test.ts` in v1.1.0):
   - 5 × `getStats` round-trip tests, one per newly added platform (pinterest / threads / telegram / ok / dzen). Each asserts the chosen value flows through `qs.platform` to `GET /v1/videos/stats` exactly as typed.
   - 9 × `getByExternalId` invariant test (one per platform) — backend scopes by `(organization_id, external_video_id)` and ignores the platform field; the test locks in that no `?platform=...` leaks onto the wire regardless of which dropdown value the caller picks.
   - 9 × `updateByExternalId` invariant test (one per platform) — same invariant on `PATCH /v1/videos/by-external-id`, also asserts the body never carries a `platform` field.

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-influtics",
-  "version": "1.0.11",
+  "version": "1.1.0",
   "description": "Official Influtics integration for n8n — track influencer videos, bloggers, and trends",
   "author": {
     "name": "Influtics",
@@ -13,7 +13,8 @@
     "n8n-community-node-package",
     "n8ncommunity",
     "influtics",
-    "influencer-marketing"
+    "influencer-marketing",
+    "single-action-node"
   ],
   "license": "MIT",
   "main": "dist/index.js",
@@ -59,10 +60,7 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "nodes": [
-      "dist/nodes/InfluticsAccount/InfluticsAccount.node.js",
-      "dist/nodes/InfluticsBlogger/InfluticsBlogger.node.js",
-      "dist/nodes/InfluticsTrend/InfluticsTrend.node.js",
-      "dist/nodes/InfluticsVideo/InfluticsVideo.node.js"
+      "dist/nodes/Influtics/Influtics.node.js"
     ],
     "credentials": [
       "dist/credentials/InfluticsApi.credentials.js"
