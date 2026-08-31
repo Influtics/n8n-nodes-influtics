@@ -95,6 +95,35 @@ export function mockContext(options: MockContextOptions) {
         // so accidental reads are visible (no silent undefined spread).
         return Promise.resolve({});
       },
+      // Resource handlers route every HTTP call through
+      // `influticsApiRequest.call(this, METHOD, path, body?, qs?)`, which
+      // internally calls `this.helpers.httpRequestWithAuthentication.call(
+      // this, CREDENTIAL_NAME, options )`. To make the test seam ergonomic
+      // we expose a single `apiRequest` stub and wrap it so the real
+      // GenericFunctions path reaches it untouched. This keeps the
+      // resource-module tests honest about the actual call chain while
+      // letting each test record calls / inject canned responses / throw
+      // canned errors without standing up a nock + fetch loop.
+      helpers: {
+        httpRequestWithAuthentication: (async (
+          _credName: string,
+          opts: { method: string; url: string; body?: unknown; qs?: unknown },
+        ) => {
+          // Parse `url: https://api.influtics.com/v1/account/usage` back
+          // into method=GET + path=/v1/account/usage to match what a real
+          // handler would see if it called apiRequest directly.
+          const url = new URL(opts.url);
+          return apiRequest.call(
+            ctx as unknown as IExecuteFunctions,
+            opts.method as InfluticsApiRequestFn extends (...a: infer A) => any
+              ? A[0]
+              : never,
+            url.pathname,
+            opts.body as IDataObject | undefined,
+            opts.qs as IDataObject | undefined,
+          );
+        }) as any,
+      },
       apiRequest,
     } as unknown as MockContext;
     return ctx;
