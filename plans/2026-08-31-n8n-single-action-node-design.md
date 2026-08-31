@@ -119,6 +119,11 @@ export async function executeInflutics(this, _items) {
   const response = await handler.call(this, 0);
   return [[{ json: response }]];
 }
+
+// `executeInflutics` lives in `nodes/Influtics/Influtics.node.ts` (alongside the
+// `Influtics` class) and is also exported there so the dispatcher test can
+// import it directly without going through the n8n executor.
+export { executeInflutics };
 ```
 
 ### 2.4 Resource module contract
@@ -189,7 +194,7 @@ same parameters, same wire contract. No backend changes.
 | `getUsage` | `GET /v1/account/usage` | no params |
 | `getLimits` | `GET /v1/account/limits` | no params |
 
-**Total: 12 operations** (5 + 3 + 1 + 2 + 1). Same wire contract as today.
+**Total: 11 operations** (video 5 + blogger 3 + trend 1 + account 2). Same wire contract as today.
 
 ### Parameter naming collisions
 
@@ -373,12 +378,11 @@ rm -f  __tests__/InfluticsVideo.test.ts
 
 ### 5.4 Icon handling
 
-Each old node currently has 3 SVG files (`influtics.svg`, `influtics-light.svg`, `influtics-dark.svg`) — 12 in total. After consolidation only 3 remain:
+Each old node currently has 3 SVG files (`influtics.svg`, `influtics-light.svg`, `influtics-dark.svg`) — 12 in total. After consolidation only 2 are referenced by `INodeTypeDescription.icon` (`light` + `dark`); the bare `influtics.svg` becomes unused and is deleted as part of this change:
 
 ```
-nodes/Influtics/influtics.svg
-nodes/Influtics/influtics-light.svg
-nodes/Influtics/influtics-dark.svg
+nodes/Influtics/influtics-light.svg   ← referenced by INodeTypeDescription.icon.light
+nodes/Influtics/influtics-dark.svg    ← referenced by INodeTypeDescription.icon.dark
 ```
 
 `credentials/Influtics.{svg,dark.svg}` are unchanged.
@@ -404,7 +408,7 @@ dist/
 
 - `node-dirname-against-convention`: `nodes/Influtics/Influtics.node.ts` exports class `Influtics` — passes.
 - `resources/` files are plain `.ts` (not `.node.ts`) and export objects/functions, not INodeType — not inspected by the rule.
-- Two existing `eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node` comments move into `nodes/Influtics/Influtics.node.ts` (the sole INodeType definition).
+- Any existing `eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node` comments must be verified in the current source before porting. The new node declares exactly one input (`[NodeConnectionTypes.Main]`), so this rule is unlikely to fire; carry comments across only if they remain necessary after the rebuild.
 
 ---
 
@@ -500,6 +504,8 @@ npm run scan:package      # n8n official scanner, 0 errors
 
 ### 7.2 Publish (CI only)
 
+Precondition: `feat/single-action-node` has been merged to `main` via PR (Section 8 release-flow). Tag-push is gated to `main` because the release workflow's `on.push.tags: ['v*']` runs whatever branch the tag is on, and tag pushes from a feature branch can race with subsequent merges.
+
 ```bash
 git checkout main
 git pull
@@ -531,7 +537,7 @@ node per the verified-nodes guidelines.
 What's in v1.1.0:
 - One node: `Influtics`
 - Four resources: Account / Blogger / Trend / Video
-- 12 operations under their respective resources
+- 11 operations under their respective resources (5 + 3 + 1 + 2)
 - All existing wire contracts preserved (zero backend changes)
 - npm package: https://www.npmjs.com/package/n8n-nodes-influtics/v/1.1.0
 - dist.provenance: <paste URL>
