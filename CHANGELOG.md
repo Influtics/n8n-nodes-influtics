@@ -2,6 +2,41 @@
 
 All notable changes to `n8n-nodes-influtics` are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/), versioning follows [SemVer](https://semver.org/).
 
+## [1.1.0] - 2026-08-31
+
+### ⚠️ BREAKING — package consolidated to a single action node
+
+The four separate nodes (`Influtics Account`, `Influtics Blogger`, `Influtics Trend`,
+`Influtics Video`) have been merged into a single **`Influtics`** action node, with each
+surface exposed as a **Resource** (Account / Blogger / Trend / Video) and each operation
+under it.
+
+This change is required by [n8n's verified-nodes guidelines][vg] ("one regular node per
+package") and follows the pattern used by HubSpot, Notion, Airtable, etc.
+
+[vg]: https://docs.n8n.io/connect/create-nodes/build-your-node/reference/verification-guidelines#node-types
+
+#### Action required for existing workflows
+
+**Workflows that reference the old node types will fail to load after upgrading.** n8n
+does not auto-rename community-node types, so each affected node must be re-created:
+
+1. Open the workflow in the n8n canvas.
+2. Delete the old node (e.g. `Influtics Video`).
+3. Drop a new `Influtics` node onto the canvas and re-wire it.
+4. Pick the matching **Resource** (Video / Blogger / Trend / Account) + the same
+   **Operation** as before.
+5. Save the workflow.
+
+Parameter names and operation values are unchanged — once the new node is dropped and the
+old one deleted, all parameters are recognisable.
+
+#### Other changes
+- Node icon and credential unchanged.
+- All backend endpoints, request bodies, and rate limits unchanged.
+- ESLint-clean, vitest green, `n8n-node build` produces a 1-node `dist/`.
+- `@n8n/scan-community-package` passes locally.
+
 ## [1.0.10] - 2026-08-28
 
 ### Changed
