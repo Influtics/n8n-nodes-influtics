@@ -61,7 +61,7 @@ After install, configure the **Influtics API** credential with your API key from
 |------|---------|
 | `UNAUTHORIZED` | API key is missing or invalid. |
 | `PAID_PLAN_REQUIRED` | This endpoint requires a paid subscription. Upgrade at the URL surfaced in the error description. |
-| `BLOGGER_NOT_TRACKED` | Creator isn't tracked by your org — run **Influtics Blogger → Track** first. |
+| `BLOGGER_NOT_TRACKED` | Creator isn't tracked by your org — run **Influtics → Blogger → Track** first. |
 | `JOB_TIMEOUT` | The async job didn't complete in time — poll again or retry. |
 | `VALIDATION_ERROR` | A required field is missing or invalid. |
 
