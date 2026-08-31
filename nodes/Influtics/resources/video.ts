@@ -50,7 +50,7 @@ import {
   type IExecuteFunctions,
   type INodeProperties,
 } from 'n8n-workflow';
-import { influticsApiRequest } from '../../GenericFunctions';
+import { influticsApiRequest, VIDEO_PLATFORMS } from '../../GenericFunctions';
 import type { OperationHandler } from '../Influtics.node';
 
 /**
@@ -390,12 +390,13 @@ export function videoProperties(): INodeProperties[] {
       name: 'platform',
       type: 'options',
       displayOptions: { show: { resource: ['video'], operation: ['getStats'] } },
-      options: [
-        { name: 'TikTok', value: 'tiktok' },
-        { name: 'Instagram', value: 'instagram' },
-        { name: 'YouTube', value: 'youtube' },
-        { name: 'VK', value: 'vk' },
-      ],
+      // All 9 platforms the Influtics video-tracking surface accepts.
+      // Single source of truth lives in nodes/GenericFunctions.ts
+      // (`VIDEO_PLATFORMS`) — adding/removing a platform there propagates here
+      // and to getByExternalId / updateByExternalId below. The 4-platform
+      // creator-tracking surface (`InfluticsBlogger`) keeps a narrower list
+      // because creator scrapers only cover TikTok / Instagram / YouTube / VK.
+      options: [...VIDEO_PLATFORMS],
       default: 'tiktok',
       description: 'Filter by a single platform',
     },
@@ -479,12 +480,12 @@ export function videoProperties(): INodeProperties[] {
           operation: ['getByExternalId', 'updateByExternalId'],
         },
       },
-      options: [
-        { name: 'TikTok', value: 'tiktok' },
-        { name: 'Instagram', value: 'instagram' },
-        { name: 'YouTube', value: 'youtube' },
-        { name: 'VK', value: 'vk' },
-      ],
+      // All 9 platforms (see getStats Platform above for rationale).
+      // The backend ignores this field on these two endpoints — the
+      // (organization_id, external_video_id) partial unique index scopes
+      // the row — but the dropdown stays `required: true` so callers
+      // can't omit the platform hint.
+      options: [...VIDEO_PLATFORMS],
       default: 'tiktok',
       required: true,
     },

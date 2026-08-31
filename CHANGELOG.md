@@ -37,6 +37,27 @@ old one deleted, all parameters are recognisable.
 - ESLint-clean, vitest green, `n8n-node build` produces a 1-node `dist/`.
 - `@n8n/scan-community-package` passes locally.
 
+## [1.0.11] - 2026-08-29
+
+### Added
+
+- **All 9 supported platforms exposed on `InfluticsVideo` dropdowns** — the `Platform` parameter on `Get Stats`, `Get By External ID`, and `Update By External ID` previously listed only 4 platforms (TikTok / Instagram / YouTube / VK). It now lists all 9 the Influtics video-tracking surface accepts: **Dzen, Instagram, OK, Pinterest, Telegram, Threads, TikTok, VK, YouTube**. The 9-platform list lives in `nodes/GenericFunctions.ts` as a new exported `VIDEO_PLATFORMS: ReadonlyArray<INodePropertyOptions>` constant — single source of truth, imported by both dropdowns so adding/removing a platform touches one declaration. In v1.1.0 this list is consumed by the new single `Influtics` node's `Video` resource; the legacy `InfluticsVideo.node.ts` that this PR originally modified has been removed in v1.1.0's consolidation.
+- **README "Supported platforms" section** — documents the 4-vs-9 asymmetry honestly: `InfluticsVideo` accepts all 9, `InfluticsBlogger` is locked to the 4 creator-coverage platforms (TikTok / Instagram / YouTube / VK) because that's where Influtics has ongoing creator-scraper coverage.
+
+### Tests
+
+- **`__tests__/InfluticsVideo.test.ts`** — added 23 new tests (file removed in v1.1.0's consolidation; the platform-coverage invariants are preserved by `nodes/Influtics/__tests__/resources/video.test.ts` in v1.1.0):
+  - 5 × `getStats` round-trip tests, one per newly added platform (pinterest / threads / telegram / ok / dzen). Each asserts the chosen value flows through `qs.platform` to `GET /v1/videos/stats` exactly as typed.
+  - 9 × `getByExternalId` invariant test (one per platform) — backend scopes by `(organization_id, external_video_id)` and ignores the platform field; the test locks in that no `?platform=...` leaks onto the wire regardless of which dropdown value the caller picks.
+  - 9 × `updateByExternalId` invariant test (one per platform) — same invariant on `PATCH /v1/videos/by-external-id`, also asserts the body never carries a `platform` field.
+- Local gate: `npm run lint` clean, `npm run build` successful, `npm test` 97/97 passing (was 74/74 before v1.0.11).
+
+### Notes
+
+- **No code behaviour change for the 4 platforms already supported** — TikTok / Instagram / YouTube / VK dropdowns are identical to v1.0.10; same `qs.platform` value, same backend routing. The change is purely additive for the 5 newly-listed platforms.
+- **Backend ignored the platform dropdown on `getByExternalId` / `updateByExternalId` before this release and still does** — these handlers scope lookups by `(organization_id, external_video_id)`. The dropdown is kept as a user-facing hint (still `required: true`) so callers can't omit it by accident, but its value is NOT forwarded. This is now enforced by tests for all 9 platforms, not just the original 4.
+- **`InfluticsBlogger` was deliberately NOT widened** — that node targets the 4-platform creator-tracking surface (`/v1/bloggers/track`) where Influtics' creator scrapers actually have coverage. Listing Telegram/Pinterest there would let workflows pick a platform the backend immediately rejects. Widening that surface needs backend work first.
+
 ## [1.0.10] - 2026-08-28
 
 ### Changed

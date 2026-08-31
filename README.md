@@ -39,7 +39,26 @@ After install, configure the **Influtics API** credential with your API key from
 | Get Job     | Poll the status of a track-creator job by ID                      |
 | Track       | Start tracking a creator (async — returns `job_id` to poll)       |
 
+## Supported platforms
+
+The Influtics API tracks videos and creators across **9 platforms** (Dzen, Instagram, OK, Pinterest, Telegram, Threads, TikTok, VK, YouTube), but the surfaces ship at different scopes:
+
+| Surface | Platforms accepted | Why |
+|---------|--------------------|-----|
+| **Influtics Video** (Track / Get Stats / Get+Update By ID) | All 9 | Video resolution is lightweight — any URL on any supported platform can be resolved and snapshotted. |
+| **Influtics Blogger** (Track / Get Job / By Username) | TikTok, Instagram, YouTube, VK | Creator scrapers cover these four platforms; the rest do not have ongoing creator-level coverage. |
+| **Influtics Trend** (Search) | TikTok, YouTube | Trend search only indexes these two platforms today. |
+| **Influtics Account** (Get Limits / Get Usage) | n/a | Account endpoints are plan-scoped, not platform-scoped. |
+
+So if you want to track a Pinterest video, use **Influtics → Video → Track**. If you want to subscribe to a Pinterest creator's new uploads, that's not yet possible — only the four creator-coverage platforms work for the **Influtics → Blogger → Track** workflow. The single source of truth for the 9-platform list lives in `nodes/GenericFunctions.ts` as `VIDEO_PLATFORMS`.
+
 ### Trend
+
+| Operation | Description                                          |
+|-----------|------------------------------------------------------|
+| Search    | Search TikTok or YouTube trends by keyword           |
+
+### Video
 
 | Operation | Description                                          |
 |-----------|------------------------------------------------------|
