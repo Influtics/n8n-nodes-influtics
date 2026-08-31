@@ -15,12 +15,21 @@
  * test can stub the HTTP layer with nock (the project already uses nock for
  * the legacy node tests — keep the same approach).
  */
+import { vi } from 'vitest';
 import type {
   IDataObject,
   IExecuteFunctions,
   INode,
   INodeExecutionData,
 } from 'n8n-workflow';
+import { INFLUTICS_API_BASE_URL } from '../../../GenericFunctions';
+
+/**
+ * Re-export of the production base URL so dispatcher tests can target nock
+ * interceptors at the same origin the real worker hits. Pure re-export; no
+ * test should hard-code the URL string.
+ */
+export const BASE_URL = INFLUTICS_API_BASE_URL;
 
 /** Signature of influticsApiRequest — what handlers actually call. */
 export type InfluticsApiRequestFn = (
@@ -128,4 +137,113 @@ export function mockContext(options: MockContextOptions) {
     } as unknown as MockContext;
     return ctx;
   };
+}
+
+/**
+ * MakeMockContext — convenience wrapper for dispatcher-level integration tests
+ * (where the dispatcher exercises `influticsApiRequest`, which in turn hits
+ * `helpers.httpRequestWithAuthentication`).
+ *
+ * The seam in `mockContext()` builds its OWN `httpRequestWithAuthentication`
+ * closure that routes through a caller-supplied apiRequest stub. That's the
+ * right shape for per-handler unit tests (resource/{name}.test.ts) but it
+ * hides the dispatcher's per-call HTTP shape — which is what dispatcher
+ * tests need to assert against.
+ *
+ * `makeMockContext` accepts a single flat params map, pulls `resource` /
+ * `operation` out as the bound operation triple, and builds a context whose
+ * `helpers.httpRequestWithAuthentication` IS a vitest mock so callers can
+ * inspect `.mock.calls.length`. The mock records every call and returns a
+ * canned happy-path response; the dispatcher wraps that into the standard
+ * `[[{ json: response }]]` return shape so callers can assert on
+ * `out[0][0].json`.
+ *
+ * The seam extension is the only divergence from `mockContext()` — the
+ * parameter map, node skeleton, inputData, and getCredentials all behave
+ * identically so a handler moved from a per-resource test to a dispatcher
+ * test sees the same parameter view.
+ */
+export type MakeMockContextParams = {
+  /**
+   * Resource key. Defaults to `'video'`. Intentionally typed as `string`
+   * (not the narrower `'account' | 'blogger' | 'trend' | 'video'` union) so
+   * dispatcher tests can deliberately pass unknown values to verify the
+   * dispatcher's `NodeOperationError` branch.
+   */
+  resource?: string;
+  operation?: string;
+  [key: string]: unknown;
+};
+
+export type MockContextWithHttpMock = MockContext & {
+  /**
+   * Direct handle on the underlying vi.fn for assertions that go beyond
+   * `mock.calls.length` (e.g. inspecting the actual options passed to the
+   * helper). This is the SAME object as `ctx.helpers.httpRequestWithAuthentication`.
+   */
+  httpMock: ReturnType<typeof vi.fn>;
+};
+
+export function makeMockContext(
+  params: MakeMockContextParams = {},
+): MockContextWithHttpMock {
+  const {
+    resource = 'video',
+    operation = 'track',
+    ...rest
+  } = params;
+
+  const node: INode = {
+    id: 'test-node-id',
+    name: 'Influtics',
+    type: 'n8n-nodes-influtics.influtics',
+    typeVersion: 2,
+    position: [0, 0],
+    parameters: { resource, operation },
+  } as unknown as INode;
+
+  const inputData: INodeExecutionData[] = [{ json: {} }];
+
+  // Records every dispatch call and returns a happy-path envelope so the
+  // dispatcher's `[[{ json: response }]]` return shape is stable. nock
+  // interceptors that the test installs DO NOT intercept this — nock only
+  // captures real network traffic — but they also don't conflict, since
+  // nock.cleanAll() in afterEach will reap them harmlessly.
+  const httpMock = vi.fn(
+    async (
+      _credName: string,
+      _opts: { method: string; url: string; body?: unknown; qs?: unknown },
+    ): Promise<IDataObject> => ({ success: true, data: {}, meta: {} }),
+  );
+
+  const ctx: MockContext = {
+    getNodeParameter(name: string, _i: number, fallback?: unknown) {
+      if (name === 'resource') return resource;
+      if (name === 'operation') return operation;
+      if (Object.prototype.hasOwnProperty.call(rest, name)) {
+        return rest[name];
+      }
+      return fallback;
+    },
+    getNode() {
+      return node;
+    },
+    getInputData() {
+      return inputData;
+    },
+    getCredentials(_type: string) {
+      return Promise.resolve({});
+    },
+    helpers: {
+      httpRequestWithAuthentication: httpMock as any,
+    },
+    // The dispatcher only goes through `influticsApiRequest` →
+    // `helpers.httpRequestWithAuthentication`. The `apiRequest` field on
+    // MockContext is for the per-resource test seam (which DOES call it
+    // directly), so expose the same shape — here it's a no-op shim because
+    // nothing under test calls `ctx.apiRequest` in this test layer.
+    apiRequest: (async () => ({})) as unknown as InfluticsApiRequestFn,
+  } as unknown as MockContext;
+
+  return Object.assign(ctx, { httpMock });
 }
