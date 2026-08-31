@@ -18,38 +18,42 @@ After install, configure the **Influtics API** credential with your API key from
 
 ## Operations
 
-### Influtics Video
+> **Heads-up if you're upgrading from ≤ 1.0.10:** the four legacy nodes
+> (`Influtics Video`, `Influtics Blogger`, `Influtics Trend`, `Influtics Account`)
+> have been merged into a single **`Influtics`** node. Each surface is now a
+> **Resource** dropdown. Workflows referencing the old node types must be
+> re-created — see [CHANGELOG → 1.1.0](./CHANGELOG.md) for steps.
 
-| Operation | Method | Endpoint |
-|-----------|--------|----------|
-| Track | `POST` | `/v1/videos/track` |
-| Get Stats | `GET` | `/v1/videos/stats` |
-| Get By ID | `GET` | `/v1/videos/by-id/{id}` |
-| Get By External ID | `GET` | `/v1/videos/by-external-id/{id}` |
-| Update By External ID | `PATCH` | `/v1/videos/by-external-id/{id}` |
+### Account
 
-### Influtics Blogger
+| Operation   | Description                                    |
+|-------------|------------------------------------------------|
+| Get Limits  | Read rate limit configuration                  |
+| Get Usage   | Read usage history and subscription summary    |
 
-| Operation | Method | Endpoint |
-|-----------|--------|----------|
-| Track | `POST` | `/v1/bloggers/track` (returns `job_id`) |
-| Get Job | `GET` | `/v1/bloggers/jobs/{job_id}` |
-| By Username | `GET` | `/v1/bloggers/by-username/{username}` |
+### Blogger
 
-The **Track** operation is async; pair it with **Get Job** using the expression `{{ $json.job_id }}` in the next workflow step.
+| Operation   | Description                                                       |
+|-------------|-------------------------------------------------------------------|
+| By Username | Read a tracked creator by platform + username (read-only)         |
+| Get Job     | Poll the status of a track-creator job by ID                      |
+| Track       | Start tracking a creator (async — returns `job_id` to poll)       |
 
-### Influtics Trend
+### Trend
 
-| Operation | Method | Endpoint |
-|-----------|--------|----------|
-| Search | `GET` | `/v1/trends/search` |
+| Operation | Description                                          |
+|-----------|------------------------------------------------------|
+| Search    | Search TikTok or YouTube trends by keyword           |
 
-### Influtics Account
+### Video
 
-| Operation | Method | Endpoint |
-|-----------|--------|----------|
-| Get Usage | `GET` | `/v1/account/usage` |
-| Get Limits | `GET` | `/v1/account/limits` |
+| Operation             | Description                                                 |
+|-----------------------|-------------------------------------------------------------|
+| Get By External ID    | Read one tracked video by platform + external ID            |
+| Get By ID             | Read one tracked video by internal ID                       |
+| Get Stats             | Read video-level metrics                                    |
+| Track                 | Track videos by URL                                         |
+| Update By External ID | Patch metadata on a tracked video                           |
 
 ## Errors
 
@@ -97,9 +101,22 @@ sudo systemctl start n8n
 
 #### Confirm the install succeeded
 
-Open a workflow, add a node, search for `Influtics`. All four should appear: **Influtics Video**, **Influtics Blogger**, **Influtics Trend**, **Influtics Account**.
+Open a workflow, add a node, search for `Influtics`. A single `Influtics` node should appear in the search.
 
-If they still don't appear, capture the install log from **Settings → Community Nodes → click the package → View error log** and open an issue at https://github.com/Influtics/n8n-nodes-influtics/issues with the log attached.
+If it still doesn't appear, capture the install log from **Settings → Community Nodes → click the package → View error log** and open an issue at https://github.com/Influtics/n8n-nodes-influtics/issues with the log attached.
+
+### Upgrading from ≤ 1.0.10
+
+**Symptom:** After installing v1.1.0, an existing workflow errors with
+`Node type influticsVideo is not known`. (The exact type name appears in the
+error toast on the failing node.)
+
+**Cause:** v1.1.0 merges the four legacy nodes into a single `Influtics` action
+node. n8n does not auto-rename community-node types.
+
+**Fix:** Delete the old node from the canvas and drop a new `Influtics` node.
+Pick the matching **Resource** (Video / Blogger / Trend / Account) and the same
+**Operation** you had before. All parameter names and types are unchanged.
 
 ## Documentation
 
