@@ -1,11 +1,6 @@
 /**
  * Trend resource module for the Influtics single-action node.
  *
- * Source of truth: `nodes/InfluticsTrend/InfluticsTrend.node.ts`. The legacy
- * InfluticsTrend node remains registered until Phase 2 / Task 15, so the wire
- * contract MUST match 1:1 — any drift here breaks the migration-straddle
- * guarantee for users who still have legacy workflows open.
- *
  * Backend contract (verified against api-worker `trendsHandler.js`):
  *   GET /v1/trends/search
  *     query (REQUIRED):
@@ -20,10 +15,10 @@
  *     Errors: 400 VALIDATION_ERROR, 401 UNAUTHORIZED, 402 PAID_PLAN_REQUIRED,
  *             429 RATE_LIMITED.
  *
- * The handler runs the same defensive guards the legacy node runs BEFORE the
- * HTTP call so the user sees a NodeOperationError in the n8n UI instead of a
- * raw 400 envelope. Empty string is treated as "user didn't pick one" for
- * every optional field; only truthy values are forwarded onto the wire.
+ * The handler runs defensive guards BEFORE the HTTP call so the user sees a
+ * NodeOperationError in the n8n UI instead of a raw 400 envelope. Empty
+ * string is treated as "user didn't pick one" for every optional field;
+ * only truthy values are forwarded onto the wire.
  */
 import {
   NodeOperationError,
@@ -90,8 +85,8 @@ export const TREND_OPERATIONS: Record<string, OperationHandler> = {
     }
 
     // Build the query-string explicitly — strip empty strings so the wire
-    // request stays minimal. Mirrors the InfluticsVideo.getStats filter
-    // pattern: only the keys the caller actually set go on the URL.
+    // request stays minimal. Only the keys the caller actually set go on
+    // the URL.
     const qs: IDataObject = {
       keyword: keyword.trim(),
       platform,
@@ -156,8 +151,8 @@ export function trendProperties(): INodeProperties[] {
         { name: 'YouTube', value: 'youtube' },
       ],
       // The UI exposes both valid platforms; the backend rejects everything
-      // else with 400 VALIDATION_ERROR. Default tiktok to match the rest of
-      // the package's defaults (InfluticsVideo, InfluticsBlogger).
+      // else with 400 VALIDATION_ERROR. Default tiktok to stay consistent
+      // with the rest of the package's defaults.
       default: 'tiktok',
       required: true,
       description: 'Platform to search trends on',

@@ -1,11 +1,6 @@
 /**
  * Blogger resource module for the Influtics single-action node.
  *
- * Source of truth: `nodes/InfluticsBlogger/InfluticsBlogger.node.ts`. The
- * legacy InfluticsBlogger node remains registered until Phase 2 / Task 15,
- * so the wire contract MUST match 1:1 — any drift here breaks the migration-
- * straddle guarantee for users who still have legacy workflows open.
- *
  * Backend contract (verified against api-worker source):
  *   POST /v1/bloggers/track
  *     body (flat): { platform, username, initial_videos_count }

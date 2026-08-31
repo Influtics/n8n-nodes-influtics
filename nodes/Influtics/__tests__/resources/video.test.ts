@@ -10,12 +10,9 @@ import {
  * Influtics resource-module tests — Video (Track + Get Stats + Get By ID +
  * Get By External ID + Update By External ID).
  *
- * The legacy `nodes/InfluticsVideo/InfluticsVideo.node.ts` is the source of
- * truth for the backend contract (verified against api-worker
- * `handleTrackVideos` / `handleGetVideoStats` / `handleGetVideoById` /
- * `handleGetVideoByExternalId` / `handlePatchVideoByExternalId`). These
- * tests pin the same wire shape at the dispatcher-handler level so the
- * legacy node can be retired safely later.
+ * Backend contract verified against api-worker `handleTrackVideos` /
+ * `handleGetVideoStats` / `handleGetVideoById` /
+ * `handleGetVideoByExternalId` / `handlePatchVideoByExternalId`.
  *
  * Thirty-one tests cover all five operations end-to-end:
  *   track (4):            envelope passthrough; wire shape; reject empty urls;
@@ -408,8 +405,8 @@ describe('resources/video — getStats', () => {
   it('clamps limit > 100 down to 100 before sending', async () => {
     // Backend handleGetVideoStats hard-caps limit at 100. The UI clamps via
     // typeOptions.maxValue = 100, but a custom caller can bypass it. The
-    // executor MUST defensively clamp to 100 BEFORE the HTTP call. Mirrors
-    // the legacy InfluticsVideo executor.
+    // executor MUST defensively clamp to 100 BEFORE the HTTP call.
+    // Enforced here.
     const { fn, calls } = makeRecordingStub('ok', {
       success: true,
       data: { data: [], pagination: { limit: 100, offset: 0, total: 0, has_more: false } },
@@ -438,10 +435,10 @@ describe('resources/video — getStats', () => {
   });
 
   it('clamps limit < 1 (or non-numeric) UP to 50 default before sending', async () => {
-    // Legacy InfluticsVideo silently coerces invalid limit values to the
-    // 50-default. UI default = 50 and minValue = 1, but a custom caller
-    // can pass 0 / 'abc' / null / NaN. Documents the "default fallback"
-    // branch — distinct from the "clamp down >100" branch above.
+    // Silently coerces invalid limit values to the 50-default. UI default = 50
+    // and minValue = 1, but a custom caller can pass 0 / 'abc' / null / NaN.
+// Documents the "default fallback" branch — distinct from the
+    // "clamp down >100" branch above.
     for (const badLimit of [0, -5, 'abc', '', null, undefined]) {
       const { fn, calls } = makeRecordingStub('ok', {
         success: true,

@@ -9,12 +9,8 @@ import {
 /**
  * Influtics resource-module tests — Account (Get Usage + Get Limits).
  *
- * The legacy InfluticsAccount node is the source of truth for the backend
- * contract. These tests pin the same wire shape at the dispatcher-handler
- * level so the legacy node can be retired safely later.
- *
  * Both endpoints take no query params and no body. The four-per-op coverage
- * targets (matching the legacy InfluticsAccount.test.ts depth):
+ * targets:
  *   1. happy-path: handler returns the full server envelope (success/data/meta)
  *   2. wire-shape: hits the right path with GET, no qs, no body
  *   3. 401 propagates from the api-request layer

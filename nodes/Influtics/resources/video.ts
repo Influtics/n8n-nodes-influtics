@@ -1,11 +1,6 @@
 /**
  * Video resource module for the Influtics single-action node.
  *
- * Source of truth: `nodes/InfluticsVideo/InfluticsVideo.node.ts`. The legacy
- * InfluticsVideo node remains registered until Phase 2 / Task 15, so the
- * wire contract MUST match 1:1 — any drift here breaks the migration-straddle
- * guarantee for users who still have legacy workflows open.
- *
  * Backend contract (verified against api-worker handlers):
  *   POST /v1/videos/track
  *     body: { urls: string[] } (1 ≤ urls.length ≤ 50)
@@ -62,7 +57,7 @@ import type { OperationHandler } from '../Influtics.node';
  * Hard cap on paginated pages for `returnAll: true` to keep a runaway
  * cursor from DOSing the workflow. Each page is `limit` items (≤ 100), so
  * 50 pages = 5000 items worst case — comfortably above the 1000-row
- * PostgREST cap. Mirrors the legacy InfluticsVideo executor.
+ * PostgREST cap. Enforced here.
  */
 const PAGINATION_MAX_PAGES = 50;
 
@@ -140,7 +135,7 @@ export const VIDEO_OPERATIONS: Record<string, OperationHandler> = {
       // Inline cursor-aware walk. The generic
       // `influticsApiRequestAllItems` reads `meta.next_cursor`, which
       // /v1/videos/stats never returns — so we honour the actual contract
-      // here. Mirrors the legacy InfluticsVideo executor.
+      // here. Final clamp before the HTTP call.
       const collected: IDataObject[] = [];
       // Use the (defensively-clamped) limit as the page size so a user
       // who typed 25 in the UI still walks pages of 25 items. The

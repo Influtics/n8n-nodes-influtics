@@ -1,19 +1,14 @@
 /**
  * Account resource module for the Influtics single-action node.
  *
- * Source of truth: `nodes/InfluticsAccount/InfluticsAccount.node.ts`. Both
- * operations are read-only single-batch GETs that read no query params and
- * no body. The legacy InfluticsAccount node remains registered until
- * Phase 2 / Task 15, so the wire contract MUST match 1:1 — any drift here
- * breaks the migration-straddle guarantee for users who still have legacy
- * workflows open.
- *
  * Public docs: https://docs.influtics.com/
  *   GET /v1/account/usage   → { data: { usage_history, summary } }
  *   GET /v1/account/limits  → { data: { rate_limits } }
  *
- * Because both endpoints take no user input, the operation dropdown is the
- * only INodeProperties entry the module contributes — no per-op fields.
+ * Both endpoints are read-only single-batch GETs that take no query params
+ * and no body. Because both endpoints take no user input, the operation
+ * dropdown is the only INodeProperties entry the module contributes — no
+ * per-op fields.
  */
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { influticsApiRequest } from '../../GenericFunctions';
@@ -62,9 +57,9 @@ export function accountProperties(): INodeProperties[] {
       ],
       default: 'getUsage',
       // Scoped to resource=account so the dropdown does not leak into
-      // Blogger / Trend / Video renders. The legacy InfluticsAccount node
-      // renders identically because the dispatcher spreads every resource
-      // module's properties into the same INodeTypeDescription.
+      // Blogger / Trend / Video renders. The dispatcher spreads every
+      // resource module's properties into the same INodeTypeDescription,
+      // so the operation dropdown stays scoped to the selected Resource.
       displayOptions: { show: { resource: ['account'] } },
     },
   ];

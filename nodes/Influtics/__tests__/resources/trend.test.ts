@@ -9,10 +9,7 @@ import {
 /**
  * Influtics resource-module tests — Trend (Search).
  *
- * The legacy `nodes/InfluticsTrend/InfluticsTrend.node.ts` is the source of
- * truth for the backend contract (verified against api-worker
- * `trendsHandler.js`). These tests pin the same wire shape at the
- * dispatcher-handler level so the legacy node can be retired safely later.
+ * Backend contract verified against api-worker `trendsHandler.js`.
  *
  * Fourteen tests cover the Search operation end-to-end:
  *   (a) happy path: keyword + platform minimal → full envelope
@@ -183,9 +180,9 @@ describe('resources/trend — search', () => {
   });
 
   it('trims keyword whitespace before sending on the wire', async () => {
-    // Legacy InfluticsTrend explicitly trims `keyword.trim()` before adding
-    // it to the qs. A user who pastes `"  fidget  "` must NOT send leading
-    // or trailing whitespace to the backend.
+    // Trims `keyword.trim()` before adding it to the qs. A user who pastes
+    // `"  fidget  "` must NOT send leading or trailing whitespace to the
+    // backend.
     const { fn, calls } = makeRecordingStub('ok', {
       success: true,
       data: { trends: [] },
@@ -236,8 +233,8 @@ describe('resources/trend — search', () => {
   it('throws NodeOperationError when keyword is missing', async () => {
     // The backend rejects missing keyword with 400 VALIDATION_ERROR — fail
     // fast with a clear UI message instead of letting the workflow silently
-    // 400. Message text MUST match the legacy InfluticsTrend verbatim so the
-    // migration-straddle is invisible to users.
+    // 400. Message text is what the user sees on validation failure —
+    // keep it user-facing.
     const { fn } = makeRecordingStub('ok', { success: true, data: {}, meta: {} });
     const { ctx } = bindCtx(
       {

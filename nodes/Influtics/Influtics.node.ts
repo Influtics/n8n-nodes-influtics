@@ -57,8 +57,7 @@ export async function executeInflutics(
     );
   }
   // All eleven ops are single-batch: one HTTP call per workflow run regardless
-  // of input item count. Mirrors the InfluticsAccount/Video/Trend/Blogger
-  // single-batch patterns.
+  // of input item count. All single-batch by design.
   const response = await handler.call(this, 0);
   return [[{ json: response }]];
 }

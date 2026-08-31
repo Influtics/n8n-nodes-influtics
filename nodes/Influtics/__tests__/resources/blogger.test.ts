@@ -9,11 +9,8 @@ import {
 /**
  * Influtics resource-module tests — Blogger (Track + Get Job + By Username).
  *
- * The legacy `nodes/InfluticsBlogger/InfluticsBlogger.node.ts` is the source
- * of truth for the backend contract (verified against api-worker
- * `trackAccountValidator.js` + `shapeJob`). These tests pin the same wire
- * shape at the dispatcher-handler level so the legacy node can be retired
- * safely later.
+ * Backend contract verified against api-worker `trackAccountValidator.js`
+ * + `shapeJob`.
  *
  * Twenty tests cover all three operations end-to-end:
  *   track (10): happy minimal, happy full, wire shape, clamp >500, reject <1,
@@ -202,7 +199,7 @@ describe('resources/blogger — track', () => {
     // Defense-in-depth: the UI clamps via typeOptions.maxValue = 500, but
     // a custom caller could bypass it. The handler MUST clamp 1000 → 500
     // BEFORE the HTTP call so the backend never sees an out-of-range
-    // integer. Mirrors the legacy InfluticsBlogger executor.
+    // integer. Enforced here.
     const { fn, calls } = makeRecordingStub('ok', {
       success: true,
       data: { job_id: 'j', status_url: '/v1/bloggers/jobs/j', polling: { retry_after_seconds: 5 } },
@@ -227,7 +224,7 @@ describe('resources/blogger — track', () => {
   });
 
   it('clamps initial_videos_count < 1 UP to 1 before sending', async () => {
-    // Legacy InfluticsBlogger uses
+    // The handler clamps via
     //   Math.max(1, Math.min(initialVideosCount, 500))
     // which silently clamps 0 → 1, -5 → 1, etc. The UI clamps via
     // minValue = 1, but a custom caller can bypass it. Documents the
@@ -256,7 +253,7 @@ describe('resources/blogger — track', () => {
   });
 
   it('throws NodeOperationError when initial_videos_count is a non-integer string', async () => {
-    // Legacy InfluticsBlogger rejects 'abc' before the HTTP call. The
+    // Rejects 'abc' before the HTTP call. The
     // defense-in-depth check covers custom callers that bypass the
     // typeOptions guard. Number.isFinite('abc' / 1) = NaN, !isInteger
     // → guard fires.
@@ -552,9 +549,9 @@ describe('resources/blogger — byUsername', () => {
 
   it('strips empty platform — no platform qs on the wire when caller leaves it blank', async () => {
     // The UI defaults the platform dropdown to 'tiktok', but a custom
-    // caller can pass ''. The legacy InfluticsBlogger executor strips
-    // empty strings so the wire request stays minimal — the backend
-    // defaults to tiktok anyway. Documents the stripping contract.
+    // caller can pass ''. The executor strips empty strings so the wire
+    // request stays minimal — the backend defaults to tiktok anyway.
+    // Documents the stripping contract.
     const { fn, calls } = makeRecordingStub('ok', {
       success: true,
       data: { creator_id: 'cr-1', username: 'creator1', platform: 'tiktok' },
