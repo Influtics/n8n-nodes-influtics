@@ -14,7 +14,7 @@ import {
  * `trendsHandler.js`). These tests pin the same wire shape at the
  * dispatcher-handler level so the legacy node can be retired safely later.
  *
- * Twelve tests cover the Search operation end-to-end:
+ * Fourteen tests cover the Search operation end-to-end:
  *   (a) happy path: keyword + platform minimal → full envelope
  *   (b) happy path: all optional fields forwarded to qs
  *   (c) wire shape: GET /v1/trends/search with correct qs
