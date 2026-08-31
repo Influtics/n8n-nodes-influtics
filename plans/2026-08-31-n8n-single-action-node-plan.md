@@ -341,8 +341,6 @@ mkdir -p __tests__/helpers
 
 - [ ] **Step 1: Create the shared helper file**
 
-- [ ] **Step 1: Create the shared helper**
-
 The helper extracts the inline `makeCtx` from each existing test file into a single source-of-truth used by all per-resource tests. Keep the `nock` interception of `httpRequestWithAuthentication` — that's how real `IExecuteFunctions.httpRequestWithAuthentication` behaves (returns parsed JSON on 2xx, throws with `error.response.body` populated on non-2xx).
 
 ```typescript
