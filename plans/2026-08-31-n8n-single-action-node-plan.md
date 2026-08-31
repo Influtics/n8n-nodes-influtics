@@ -240,17 +240,6 @@ mkdir -p nodes/Influtics/resources
 For each of `account.ts`, `blogger.ts`, `trend.ts`, `video.ts` create the file with:
 
 ```typescript
-- [ ] **Step 1: Create the directory**
-
-```bash
-mkdir -p nodes/Influtics/resources
-```
-
-- [ ] **Step 2: Create stub resource modules (so the imports compile)**
-
-Each resource module needs to export `*_OPERATIONS` and `*Properties()`. Stub them minimally. For each of `account.ts`, `blogger.ts`, `trend.ts`, `video.ts` create the file with:
-
-```typescript
 // nodes/Influtics/resources/<name>.ts
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import type { OperationHandler } from '../Influtics.node';
@@ -755,7 +744,7 @@ export function trendProperties(): INodeProperties[] {
 npm test -- trend.test.ts
 ```
 
-Expected: 20 (trend) / 23 (video) passing tests, 0 failing.
+Expected: 20 passing tests, 0 failing.
 
 - [ ] **Step 5: Commit**
 
@@ -1259,7 +1248,7 @@ export function videoProperties(): INodeProperties[] {
 npm test -- video.test.ts
 ```
 
-Expected: 20 (trend) / 23 (video) passing tests, 0 failing.
+Expected: 23 passing tests, 0 failing.
 
 - [ ] **Step 5: Commit**
 
