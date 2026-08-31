@@ -60,11 +60,7 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "nodes": [
-      "dist/nodes/Influtics/Influtics.node.js",
-      "dist/nodes/InfluticsAccount/InfluticsAccount.node.js",
-      "dist/nodes/InfluticsBlogger/InfluticsBlogger.node.js",
-      "dist/nodes/InfluticsTrend/InfluticsTrend.node.js",
-      "dist/nodes/InfluticsVideo/InfluticsVideo.node.js"
+      "dist/nodes/Influtics/Influtics.node.js"
     ],
     "credentials": [
       "dist/credentials/InfluticsApi.credentials.js"
