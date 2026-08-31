@@ -22,7 +22,7 @@ After install, configure the **Influtics API** credential with your API key from
 > (`Influtics Video`, `Influtics Blogger`, `Influtics Trend`, `Influtics Account`)
 > have been merged into a single **`Influtics`** node. Each surface is now a
 > **Resource** dropdown. Workflows referencing the old node types must be
-> re-created — see [CHANGELOG → 1.1.0](./CHANGELOG.md) for steps.
+> re-created — see [CHANGELOG → 1.1.0](https://github.com/Influtics/n8n-nodes-influtics/blob/main/CHANGELOG.md#110---2026-08-31) for steps.
 
 ### Account
 
@@ -54,6 +54,23 @@ After install, configure the **Influtics API** credential with your API key from
 | Get Stats             | Read video-level metrics                                    |
 | Track                 | Track videos by URL                                         |
 | Update By External ID | Patch metadata on a tracked video                           |
+
+## Upgrading from ≤ 1.0.10
+
+After installing v1.1.0, an existing workflow errors with
+`Node type influticsVideo is not known` (the exact type name appears in the
+error toast on the failing node).
+
+**Cause:** v1.1.0 merges the four legacy nodes into a single `Influtics` action
+node. n8n does not auto-rename community-node types.
+
+**Fix:** Delete the old node from the canvas and drop a new `Influtics` node.
+Pick the matching **Resource** (Video / Blogger / Trend / Account) and the same
+**Operation** you had before. All parameter names and types are unchanged.
+
+For the full rationale and migration steps, see the
+[CHANGELOG → 1.1.0](https://github.com/Influtics/n8n-nodes-influtics/blob/main/CHANGELOG.md#110---2026-08-31)
+entry.
 
 ## Errors
 
@@ -104,19 +121,6 @@ sudo systemctl start n8n
 Open a workflow, add a node, search for `Influtics`. A single `Influtics` node should appear in the search.
 
 If it still doesn't appear, capture the install log from **Settings → Community Nodes → click the package → View error log** and open an issue at https://github.com/Influtics/n8n-nodes-influtics/issues with the log attached.
-
-### Upgrading from ≤ 1.0.10
-
-**Symptom:** After installing v1.1.0, an existing workflow errors with
-`Node type influticsVideo is not known`. (The exact type name appears in the
-error toast on the failing node.)
-
-**Cause:** v1.1.0 merges the four legacy nodes into a single `Influtics` action
-node. n8n does not auto-rename community-node types.
-
-**Fix:** Delete the old node from the canvas and drop a new `Influtics` node.
-Pick the matching **Resource** (Video / Blogger / Trend / Account) and the same
-**Operation** you had before. All parameter names and types are unchanged.
 
 ## Documentation
 
